@@ -35,15 +35,15 @@
   .hero { max-width: 760px; margin: 0 auto; padding: 6rem 2.5rem 4rem; text-align: center; }
   .badge { display: inline-flex; align-items: center; gap: 7px; background: var(--accent-dim); border: 1px solid rgba(14,165,233,0.18); border-radius: 100px; padding: 0.28rem 0.85rem; font-size: 0.7rem; color: var(--accent); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 1.75rem; }
   .badge-dot { width: 5px; height: 5px; background: var(--accent); border-radius: 50%; }
-  h1 { font-family: 'Syne', sans-serif; font-size: clamp(2.5rem, 5.5vw, 4.2rem); font-weight: 800; line-height: 1.06; letter-spacing: -0.03em; margin-bottom: 1.25rem; }
+  h1 { font-family: 'Syne', sans-serif; font-size: clamp(1.9rem, 5.5vw, 4.2rem); font-weight: 800; line-height: 1.1; letter-spacing: -0.03em; margin-bottom: 1.25rem; }
   h1 span { color: var(--accent); }
-  .hero-sub { font-size: 0.92rem; color: var(--text-2); max-width: 440px; margin: 0 auto 2.5rem; line-height: 1.8; }
+  .hero-sub { font-size: 0.88rem; color: var(--text-2); max-width: 440px; margin: 0 auto 2.5rem; line-height: 1.8; }
 
   .tools-section { max-width: 1060px; margin: 0 auto; padding: 0.5rem 2.5rem 6rem; }
   .tools-header { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 1.25rem; }
   .tools-label { font-size: 0.7rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-3); }
   .tools-count { font-size: 0.7rem; color: var(--text-3); }
-  .tools-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 12px; }
+  .tools-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(290px, 100%), 1fr)); gap: 12px; }
 
   .tool-card { background: var(--bg-2); border: 1px solid var(--border); border-radius: 12px; padding: 1.4rem; cursor: pointer; transition: border-color 0.2s, transform 0.2s, background 0.2s; display: flex; flex-direction: column; gap: 0.9rem; }
   .tool-card:hover { border-color: var(--border-h); transform: translateY(-2px); background: var(--bg-3); }
@@ -103,11 +103,16 @@
   @keyframes fu { to{opacity:1;transform:none} }
   .d1{animation-delay:0.06s} .d2{animation-delay:0.12s} .d3{animation-delay:0.2s}
 
-  @media(max-width:640px){
+  @media(max-width:768px){
     nav{padding:1rem 1.25rem;}
     .hero{padding:4rem 1.25rem 3rem;}
     .tools-section{padding:0.5rem 1.25rem 4rem;}
+    .tools-grid{grid-template-columns:1fr;}
     footer{padding:1.25rem;}
+  }
+  @media(max-width:480px){
+    h1{font-size:2.2rem;}
+    .hero-sub{font-size:0.85rem;}
   }
 </style>
 </head>
@@ -122,7 +127,7 @@
 
 <div class="hero">
   <div class="badge fade-up"><div class="badge-dot"></div>Built on Tempo Chain</div>
-  <h1 class="fade-up d1">Tools for the<br><span>Tempo ecosystem</span></h1>
+  <h1 class="fade-up d1">Tools for the <span>Tempo ecosystem</span></h1>
   <p class="hero-sub fade-up d2">A growing suite of tools for NFT communities, founders, and builders on Tempo Chain.</p>
 </div>
 
@@ -201,6 +206,13 @@
       </div>
     </div>
 
+
+    <div class="tool-card" style="cursor:default;border-style:dashed;">
+      <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:0.75rem;padding:1rem 0;">
+        <div style="font-size:0.7rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-3);">More coming</div>
+        <div style="font-size:0.8rem;color:var(--text-3);line-height:1.7;max-width:220px;">New tools for the Tempo ecosystem are in development.</div>
+      </div>
+    </div>
   </div>
 </div>
 
