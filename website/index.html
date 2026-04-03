@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tempo Toolkits</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #080c10; --bg-2: #0d1117; --bg-3: #131920;
+    --border: rgba(255,255,255,0.07); --border-h: rgba(255,255,255,0.14);
+    --text: #f0f4f8; --text-2: #8a9bb0; --text-3: #4a5a6a;
+    --accent: #0ea5e9; --accent-dim: rgba(14,165,233,0.1);
+  }
+  html { scroll-behavior: smooth; }
+  body { background: var(--bg); color: var(--text); font-family: 'DM Mono', monospace; font-size: 15px; line-height: 1.7; -webkit-font-smoothing: antialiased; overflow-x: hidden; }
+  body::before { content: ''; position: fixed; inset: 0; background-image: linear-gradient(rgba(14,165,233,0.025) 1px, transparent 1px), linear-gradient(90deg, rgba(14,165,233,0.025) 1px, transparent 1px); background-size: 60px 60px; pointer-events: none; z-index: 0; }
+  * { position: relative; z-index: 1; }
+  a { color: inherit; text-decoration: none; }
+
+  nav { display: flex; align-items: center; justify-content: space-between; padding: 1.25rem 2.5rem; border-bottom: 1px solid var(--border); backdrop-filter: blur(12px); background: rgba(8,12,16,0.85); position: sticky; top: 0; z-index: 100; }
+  .logo { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 1.05rem; letter-spacing: -0.02em; display: flex; align-items: center; gap: 10px; }
+  .logo-dot { width: 8px; height: 8px; background: var(--accent); border-radius: 50%; box-shadow: 0 0 8px rgba(14,165,233,0.4); animation: pulse 2.5s ease-in-out infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+  .nav-right { display: flex; align-items: center; gap: 1.5rem; }
+  .nav-link { color: var(--text-2); font-size: 0.82rem; transition: color 0.2s; }
+  .nav-link:hover { color: var(--text); }
+  .btn-p { background: var(--accent); color: #fff; padding: 0.5rem 1.1rem; border-radius: 6px; font-family: 'DM Mono', monospace; font-size: 0.8rem; font-weight: 500; border: none; cursor: pointer; transition: opacity 0.2s, transform 0.15s; display: inline-block; }
+  .btn-p:hover { opacity: 0.85; transform: translateY(-1px); }
+  .btn-g { background: transparent; color: var(--text-2); padding: 0.5rem 1.1rem; border-radius: 6px; font-family: 'DM Mono', monospace; font-size: 0.8rem; border: 1px solid var(--border); cursor: pointer; transition: all 0.2s; display: inline-block; }
+  .btn-g:hover { border-color: var(--border-h); color: var(--text); background: rgba(255,255,255,0.03); }
+
+  .hero { max-width: 760px; margin: 0 auto; padding: 6rem 2.5rem 4rem; text-align: center; }
+  .badge { display: inline-flex; align-items: center; gap: 7px; background: var(--accent-dim); border: 1px solid rgba(14,165,233,0.18); border-radius: 100px; padding: 0.28rem 0.85rem; font-size: 0.7rem; color: var(--accent); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 1.75rem; }
+  .badge-dot { width: 5px; height: 5px; background: var(--accent); border-radius: 50%; }
+  h1 { font-family: 'Syne', sans-serif; font-size: clamp(2.5rem, 5.5vw, 4.2rem); font-weight: 800; line-height: 1.06; letter-spacing: -0.03em; margin-bottom: 1.25rem; }
+  h1 span { color: var(--accent); }
+  .hero-sub { font-size: 0.92rem; color: var(--text-2); max-width: 440px; margin: 0 auto 2.5rem; line-height: 1.8; }
+
+  .tools-section { max-width: 1060px; margin: 0 auto; padding: 0.5rem 2.5rem 6rem; }
+  .tools-header { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 1.25rem; }
+  .tools-label { font-size: 0.7rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-3); }
+  .tools-count { font-size: 0.7rem; color: var(--text-3); }
+  .tools-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 12px; }
+
+  .tool-card { background: var(--bg-2); border: 1px solid var(--border); border-radius: 12px; padding: 1.4rem; cursor: pointer; transition: border-color 0.2s, transform 0.2s, background 0.2s; display: flex; flex-direction: column; gap: 0.9rem; }
+  .tool-card:hover { border-color: var(--border-h); transform: translateY(-2px); background: var(--bg-3); }
+  .tool-card.live { border-color: rgba(14,165,233,0.22); }
+  .tool-card.live:hover { border-color: rgba(14,165,233,0.42); }
+  .tool-card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; }
+  .tool-icon { width: 38px; height: 38px; min-width: 38px; background: var(--bg-3); border: 1px solid var(--border); border-radius: 9px; display: flex; align-items: center; justify-content: center; font-size: 17px; }
+  .tag { font-size: 0.62rem; letter-spacing: 0.08em; text-transform: uppercase; padding: 0.2rem 0.55rem; border-radius: 100px; font-weight: 500; white-space: nowrap; }
+  .tag-live { background: rgba(16,185,129,0.1); color: #10b981; border: 1px solid rgba(16,185,129,0.2); }
+  .tag-soon { background: rgba(100,116,139,0.1); color: var(--text-3); border: 1px solid var(--border); }
+  .tool-name { font-family: 'Syne', sans-serif; font-size: 0.98rem; font-weight: 700; color: var(--text); margin-bottom: 0.28rem; }
+  .tool-desc { font-size: 0.78rem; color: var(--text-2); line-height: 1.7; }
+  .tool-footer { display: flex; align-items: center; justify-content: space-between; border-top: 1px solid var(--border); padding-top: 0.8rem; margin-top: auto; }
+  .tool-chain { font-size: 0.7rem; color: var(--text-3); display: flex; align-items: center; gap: 5px; }
+  .chain-dot { width: 5px; height: 5px; background: var(--accent); border-radius: 50%; }
+  .tool-cta { font-size: 0.72rem; color: var(--accent); display: flex; align-items: center; gap: 5px; transition: gap 0.15s; }
+  .tool-card:hover .tool-cta { gap: 9px; }
+
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.72); backdrop-filter: blur(6px); z-index: 200; align-items: center; justify-content: center; padding: 1.5rem; }
+  .modal-overlay.open { display: flex; }
+  .modal { background: var(--bg-2); border: 1px solid var(--border-h); border-radius: 16px; width: 100%; max-width: 560px; max-height: 90vh; overflow-y: auto; animation: mIn 0.18s ease; }
+  @keyframes mIn { from{opacity:0;transform:scale(0.97) translateY(8px)} to{opacity:1;transform:none} }
+  .modal-header { display: flex; align-items: flex-start; justify-content: space-between; padding: 1.4rem 1.4rem 0; gap: 1rem; }
+  .modal-header-left { display: flex; align-items: center; gap: 0.9rem; }
+  .modal-icon { width: 46px; height: 46px; background: var(--bg-3); border: 1px solid var(--border); border-radius: 11px; display: flex; align-items: center; justify-content: center; font-size: 20px; }
+  .modal-title { font-family: 'Syne', sans-serif; font-size: 1.12rem; font-weight: 700; color: var(--text); }
+  .modal-sub { font-size: 0.75rem; color: var(--text-3); margin-top: 1px; }
+  .modal-close { background: none; border: 1px solid var(--border); color: var(--text-2); width: 30px; height: 30px; min-width: 30px; border-radius: 7px; cursor: pointer; font-size: 16px; display: flex; align-items: center; justify-content: center; transition: all 0.15s; }
+  .modal-close:hover { border-color: var(--border-h); color: var(--text); }
+  .modal-body { padding: 1.4rem; }
+  .modal-desc { font-size: 0.83rem; color: var(--text-2); line-height: 1.8; margin-bottom: 1.5rem; }
+  .msec { font-size: 0.68rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-3); margin-bottom: 0.75rem; }
+  .features-list { display: flex; flex-direction: column; gap: 7px; margin-bottom: 1.5rem; }
+  .fi { display: flex; align-items: flex-start; gap: 9px; background: var(--bg-3); border: 1px solid var(--border); border-radius: 8px; padding: 0.7rem 0.9rem; }
+  .fb { width: 16px; height: 16px; min-width: 16px; background: var(--accent-dim); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-top: 2px; }
+  .fb::after { content: ''; width: 5px; height: 5px; background: var(--accent); border-radius: 50%; }
+  .ft { font-size: 0.78rem; color: var(--text-2); line-height: 1.6; }
+  .ft strong { color: var(--text); font-weight: 500; }
+  .setup-steps { display: flex; flex-direction: column; gap: 7px; margin-bottom: 1.5rem; }
+  .ss { display: flex; align-items: flex-start; gap: 9px; }
+  .sn { width: 20px; height: 20px; min-width: 20px; background: var(--accent-dim); border: 1px solid rgba(14,165,233,0.2); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.65rem; color: var(--accent); font-weight: 500; margin-top: 2px; }
+  .st { font-size: 0.78rem; color: var(--text-2); line-height: 1.6; padding-top: 1px; }
+  .st strong { color: var(--text); font-weight: 500; }
+  .modal-footer { display: flex; gap: 9px; flex-wrap: wrap; padding: 0 1.4rem 1.4rem; }
+  .modal-footer .btn-p, .modal-footer .btn-g { font-size: 0.82rem; padding: 0.58rem 1.25rem; }
+  .modal-soon { text-align: center; padding: 2rem 0 1rem; }
+  .modal-soon-icon { font-size: 2.2rem; margin-bottom: 0.85rem; opacity: 0.35; }
+  .modal-soon-text { font-size: 0.82rem; color: var(--text-3); line-height: 1.75; max-width: 300px; margin: 0 auto; }
+
+  footer { border-top: 1px solid var(--border); padding: 1.4rem 2.5rem; display: flex; align-items: center; justify-content: space-between; color: var(--text-3); font-size: 0.72rem; flex-wrap: wrap; gap: 1rem; }
+  footer a { color: var(--accent); }
+
+  .fade-up { opacity: 0; transform: translateY(14px); animation: fu 0.5s ease forwards; }
+  @keyframes fu { to{opacity:1;transform:none} }
+  .d1{animation-delay:0.06s} .d2{animation-delay:0.12s} .d3{animation-delay:0.2s}
+
+  @media(max-width:640px){
+    nav{padding:1rem 1.25rem;} .nav-link{display:none;}
+    .hero{padding:4rem 1.25rem 3rem;}
+    .tools-section{padding:0.5rem 1.25rem 4rem;}
+    footer{padding:1.25rem;}
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="logo"><div class="logo-dot"></div>Tempo Toolkits</div>
+  <div class="nav-right">
+    <a href="https://github.com/Alhassan33/tempo-toolkits" target="_blank" class="nav-link">GitHub</a>
+    <a href="{{INVITE_URL}}" class="btn-p">Add bot</a>
+  </div>
+</nav>
+
+<div class="hero">
+  <div class="badge fade-up"><div class="badge-dot"></div>Tempo Chain</div>
+  <h1 class="fade-up d1">Tools for the<br><span>Tempo ecosystem</span></h1>
+  <p class="hero-sub fade-up d2">A growing suite of tools for NFT communities, founders, and builders on Tempo Chain. Click any tool to learn more.</p>
+</div>
+
+<div class="tools-section fade-up d3">
+  <div class="tools-header">
+    <span class="tools-label">All tools</span>
+    <span class="tools-count">4 tools · 1 live</span>
+  </div>
+  <div class="tools-grid">
+
+    <div class="tool-card live" onclick="openModal('verify')">
+      <div class="tool-card-top">
+        <div class="tool-icon">⛓</div>
+        <div class="tag tag-live">Live</div>
+      </div>
+      <div>
+        <div class="tool-name">NFT Verification Bot</div>
+        <div class="tool-desc">Gate Discord servers with on-chain NFT ownership. Tiered roles, auto-updates, pathUSD payments.</div>
+      </div>
+      <div class="tool-footer">
+        <div class="tool-chain"><div class="chain-dot"></div>Tempo mainnet</div>
+        <div class="tool-cta">View details <span>→</span></div>
+      </div>
+    </div>
+
+    <div class="tool-card" onclick="openModal('sales')">
+      <div class="tool-card-top">
+        <div class="tool-icon">📊</div>
+        <div class="tag tag-soon">Coming soon</div>
+      </div>
+      <div>
+        <div class="tool-name">Sales Bot</div>
+        <div class="tool-desc">Real-time NFT sale alerts in Discord. Track floors, volume, and notify holders when their collection moves.</div>
+      </div>
+      <div class="tool-footer">
+        <div class="tool-chain"><div class="chain-dot"></div>Tempo mainnet</div>
+        <div class="tool-cta">View details <span>→</span></div>
+      </div>
+    </div>
+
+    <div class="tool-card" onclick="openModal('airdrop')">
+      <div class="tool-card-top">
+        <div class="tool-icon">🪂</div>
+        <div class="tag tag-soon">Coming soon</div>
+      </div>
+      <div>
+        <div class="tool-name">Airdrop Tool</div>
+        <div class="tool-desc">Snapshot holders and airdrop tokens or NFTs directly to wallets. Filter by tier, threshold, or date range.</div>
+      </div>
+      <div class="tool-footer">
+        <div class="tool-chain"><div class="chain-dot"></div>Tempo mainnet</div>
+        <div class="tool-cta">View details <span>→</span></div>
+      </div>
+    </div>
+
+    <div class="tool-card" onclick="openModal('snapshot')">
+      <div class="tool-card-top">
+        <div class="tool-icon">📸</div>
+        <div class="tag tag-soon">Coming soon</div>
+      </div>
+      <div>
+        <div class="tool-name">Snapshot Tool</div>
+        <div class="tool-desc">Take holder snapshots at any block height. Export to CSV for allowlists, governance, and token distribution.</div>
+      </div>
+      <div class="tool-footer">
+        <div class="tool-chain"><div class="chain-dot"></div>Tempo mainnet</div>
+        <div class="tool-cta">View details <span>→</span></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<footer>
+  <div>© 2026 Tempo Toolkits</div>
+  <div>Built for <a href="https://tempo.xyz" target="_blank">Tempo Chain</a></div>
+</footer>
+
+<!-- Modal: Verify -->
+<div class="modal-overlay" id="modal-verify" onclick="closeOnOverlay(event,'verify')">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-header-left">
+        <div class="modal-icon">⛓</div>
+        <div><div class="modal-title">NFT Verification Bot</div><div class="modal-sub">Discord · Tempo mainnet · Live</div></div>
+      </div>
+      <button class="modal-close" onclick="closeModal('verify')">✕</button>
+    </div>
+    <div class="modal-body">
+      <p class="modal-desc">Gate your Discord server with real on-chain NFT ownership. Users verify by sending a small pathUSD payment from their wallet. The bot checks the NFT contract on Tempo mainnet, assigns tiered roles, and monitors wallets hourly to auto-update roles as NFTs move.</p>
+      <div class="msec">Features</div>
+      <div class="features-list">
+        <div class="fi"><div class="fb"></div><div class="ft"><strong>On-chain verification</strong> — checks balanceOf directly on Tempo, no middlemen</div></div>
+        <div class="fi"><div class="fb"></div><div class="ft"><strong>Custom tiers</strong> — any threshold, any role name. You decide the structure</div></div>
+        <div class="fi"><div class="fb"></div><div class="ft"><strong>Auto role updates</strong> — hourly sweep upgrades or removes roles when NFTs move</div></div>
+        <div class="fi"><div class="fb"></div><div class="ft"><strong>Multi-server</strong> — each server configures their own contract and roles independently</div></div>
+        <div class="fi"><div class="fb"></div><div class="ft"><strong>pathUSD payment</strong> — small stablecoin fee proves wallet ownership without a signature</div></div>
+        <div class="fi"><div class="fb"></div><div class="ft"><strong>No-code setup</strong> — Discord embed wizard, no developers or config files needed</div></div>
+      </div>
+      <div class="msec">Setup — 3 steps</div>
+      <div class="setup-steps">
+        <div class="ss"><div class="sn">1</div><div class="st"><strong>Add the bot</strong> to your server using the invite link below</div></div>
+        <div class="ss"><div class="sn">2</div><div class="st"><strong>Run /setup</strong> — set your NFT contract, add tiers with custom thresholds and roles</div></div>
+        <div class="ss"><div class="sn">3</div><div class="st"><strong>Run /panel</strong> — post the verification embed in any channel. Done</div></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <a href="{{INVITE_URL}}" class="btn-p">Add to Discord</a>
+      <a href="https://github.com/Alhassan33/tempo-toolkits" target="_blank" class="btn-g">View source</a>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Sales -->
+<div class="modal-overlay" id="modal-sales" onclick="closeOnOverlay(event,'sales')">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-header-left">
+        <div class="modal-icon">📊</div>
+        <div><div class="modal-title">Sales Bot</div><div class="modal-sub">Discord · Tempo mainnet · Coming soon</div></div>
+      </div>
+      <button class="modal-close" onclick="closeModal('sales')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-soon">
+        <div class="modal-soon-icon">📊</div>
+        <p class="modal-soon-text">Real-time sale alerts, floor tracking, and volume notifications for NFT collections on Tempo Chain. Coming soon.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Airdrop -->
+<div class="modal-overlay" id="modal-airdrop" onclick="closeOnOverlay(event,'airdrop')">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-header-left">
+        <div class="modal-icon">🪂</div>
+        <div><div class="modal-title">Airdrop Tool</div><div class="modal-sub">Web · Tempo mainnet · Coming soon</div></div>
+      </div>
+      <button class="modal-close" onclick="closeModal('airdrop')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-soon">
+        <div class="modal-soon-icon">🪂</div>
+        <p class="modal-soon-text">Snapshot holders and airdrop tokens or NFTs. Filter by tier, threshold, or date. Export for any use case. Coming soon.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Snapshot -->
+<div class="modal-overlay" id="modal-snapshot" onclick="closeOnOverlay(event,'snapshot')">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-header-left">
+        <div class="modal-icon">📸</div>
+        <div><div class="modal-title">Snapshot Tool</div><div class="modal-sub">Web · Tempo mainnet · Coming soon</div></div>
+      </div>
+      <button class="modal-close" onclick="closeModal('snapshot')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-soon">
+        <div class="modal-soon-icon">📸</div>
+        <p class="modal-soon-text">Take holder snapshots at any block height. Export to CSV for allowlists, governance votes, and token distribution. Coming soon.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  function openModal(id){document.getElementById('modal-'+id).classList.add('open');document.body.style.overflow='hidden';}
+  function closeModal(id){document.getElementById('modal-'+id).classList.remove('open');document.body.style.overflow='';}
+  function closeOnOverlay(e,id){if(e.target===e.currentTarget)closeModal(id);}
+  document.addEventListener('keydown',e=>{if(e.key==='Escape'){document.querySelectorAll('.modal-overlay.open').forEach(m=>{m.classList.remove('open');document.body.style.overflow='';})}});
+</script>
+</body>
+</html>
