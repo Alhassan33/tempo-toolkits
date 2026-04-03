@@ -9,7 +9,7 @@ if (!clientId) {
 
 const inviteUrl = `https://discord.com/oauth2/authorize?client_id=${clientId}&scope=bot+applications.commands&permissions=8`;
 
-let html = fs.readFileSync("index.template.html", "utf8");
+let html = fs.readFileSync("index.html", "utf8");
 html = html.replaceAll("{{INVITE_URL}}", inviteUrl);
 
 fs.mkdirSync("dist", { recursive: true });
