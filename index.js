@@ -6,7 +6,7 @@ const {
   RoleSelectMenuBuilder, ChannelSelectMenuBuilder, ChannelType,
 } = require("discord.js");
 const { ethers } = require("ethers");
-const { getServer, setServer, addPending, getTierRole, addVerified, getAllServers } = require("./src/store");
+const { init, getServer, setServer, addPending, getTierRole, addVerified, getAllServers } = require("./src/store");
 const { startChecker } = require("./src/checker");
 const { startPaymentListener } = require("./src/paymentListener");
 
@@ -14,7 +14,8 @@ const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBit
 
 const pendingTierThreshold = new Map();
 
-client.once(Events.ClientReady, () => {
+client.once(Events.ClientReady, async () => {
+  await init();
   console.log("Bot online as " + client.user.tag);
   startChecker(client);
   startPaymentListener(client);
@@ -65,7 +66,7 @@ function buildSetupRow() {
 client.on(Events.InteractionCreate, async (interaction) => {
 
   if (interaction.isChatInputCommand() && interaction.commandName === "setup") {
-    const config = getServer(interaction.guildId);
+    const config = await getServer(interaction.guildId);
     return interaction.reply({
       embeds: [buildSetupEmbed(config)],
       components: buildSetupRow(),
@@ -74,7 +75,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
   }
 
   if (interaction.isChatInputCommand() && interaction.commandName === "panel") {
-    const config = getServer(interaction.guildId);
+    const config = await getServer(interaction.guildId);
     if (!config?.contract || !config?.tiers?.length || !config?.collection) {
       return interaction.reply({
         content: "Setup not complete. Run /setup and set collection name, NFT contract, and at least one tier.",
@@ -152,9 +153,9 @@ client.on(Events.InteractionCreate, async (interaction) => {
     }
 
     if (interaction.customId === "setup_cleartiers") {
-      setServer(interaction.guildId, { tiers: [] });
+      await await setServer(interaction.guildId, { tiers: [] });
       return interaction.update({
-        embeds: [buildSetupEmbed(getServer(interaction.guildId))],
+        embeds: [buildSetupEmbed(await getServer(interaction.guildId))],
         components: buildSetupRow(),
       });
     }
@@ -188,7 +189,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
     }
 
     if (interaction.customId === "status_button") {
-      const config = getServer(interaction.guildId);
+      const config = await getServer(interaction.guildId);
       if (!config) {
         return interaction.reply({ content: "Bot not configured for this server.", flags: MessageFlags.Ephemeral });
       }
@@ -230,9 +231,9 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
   if (interaction.isChannelSelectMenu() && interaction.customId === "announcement_channel_select") {
     const channel = interaction.channels.first();
-    setServer(interaction.guildId, { announcementChannel: channel.id });
+    await setServer(interaction.guildId, { announcementChannel: channel.id });
     return interaction.reply({
-      embeds: [buildSetupEmbed(getServer(interaction.guildId))],
+      embeds: [buildSetupEmbed(await getServer(interaction.guildId))],
       components: buildSetupRow(),
       flags: MessageFlags.Ephemeral,
     });
@@ -245,17 +246,17 @@ client.on(Events.InteractionCreate, async (interaction) => {
     }
 
     const roleId = interaction.roles.first().id;
-    const config = getServer(interaction.guildId);
+    const config = await getServer(interaction.guildId);
     const tiers  = config?.tiers || [];
     const idx    = tiers.findIndex(t => t.threshold === threshold);
     if (idx >= 0) tiers[idx] = { threshold, roleId };
     else tiers.push({ threshold, roleId });
 
-    setServer(interaction.guildId, { tiers });
+    await setServer(interaction.guildId, { tiers });
     pendingTierThreshold.delete(interaction.user.id);
 
     return interaction.reply({
-      embeds: [buildSetupEmbed(getServer(interaction.guildId))],
+      embeds: [buildSetupEmbed(await getServer(interaction.guildId))],
       components: buildSetupRow(),
       flags: MessageFlags.Ephemeral,
     });
@@ -265,9 +266,9 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
     if (interaction.customId === "modal_name") {
       const collection = interaction.fields.getTextInputValue("name_input").trim();
-      setServer(interaction.guildId, { collection });
+      await setServer(interaction.guildId, { collection });
       return interaction.reply({
-        embeds: [buildSetupEmbed(getServer(interaction.guildId))],
+        embeds: [buildSetupEmbed(await getServer(interaction.guildId))],
         components: buildSetupRow(),
         flags: MessageFlags.Ephemeral,
       });
@@ -278,9 +279,9 @@ client.on(Events.InteractionCreate, async (interaction) => {
       if (!ethers.isAddress(contract)) {
         return interaction.reply({ content: "Invalid address.", flags: MessageFlags.Ephemeral });
       }
-      setServer(interaction.guildId, { contract });
+      await setServer(interaction.guildId, { contract });
       return interaction.reply({
-        embeds: [buildSetupEmbed(getServer(interaction.guildId))],
+        embeds: [buildSetupEmbed(await getServer(interaction.guildId))],
         components: buildSetupRow(),
         flags: MessageFlags.Ephemeral,
       });
@@ -308,7 +309,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
     }
 
     if (interaction.customId === "verify_modal") {
-      const config = getServer(interaction.guildId);
+      const config = await getServer(interaction.guildId);
       if (!config?.contract || !config?.tiers?.length) {
         return interaction.reply({ content: "Bot not configured yet.", flags: MessageFlags.Ephemeral });
       }
@@ -321,7 +322,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
       const fee = process.env.VERIFICATION_FEE || "0.02";
-      addPending(interaction.user.id, nftWallet, interaction.guildId);
+      await addPending(interaction.user.id, nftWallet, interaction.guildId);
 
       return interaction.editReply(
         "Send " + fee + " pathUSD to:\n```" + process.env.VAULT_ADDRESS + "```" +

@@ -5,7 +5,7 @@ const CHECK_INTERVAL = 60 * 60 * 1000;
 
 async function runCheck(client) {
   console.log("Starting hourly sweep");
-  const servers = getAllServers();
+  const servers = await getAllServers();
 
   for (const [guildId, config] of Object.entries(servers)) {
     if (!config.verified || !config.contract || !config.tiers?.length) continue;
@@ -17,19 +17,17 @@ async function runCheck(client) {
       try {
         const balance     = await getBalance(wallet, config.contract);
         const member      = await guild.members.fetch(userId).catch(() => null);
-        if (!member) { removeVerified(guildId, userId); continue; }
+        if (!member) { await removeVerified(guildId, userId); continue; }
 
         const correctTier = getTierRole(config.tiers, balance);
 
         if (!correctTier) {
           for (const tier of config.tiers) {
             const role = guild.roles.cache.get(tier.roleId);
-            if (role && member.roles.cache.has(tier.roleId)) {
-              await member.roles.remove(role);
-            }
+            if (role && member.roles.cache.has(tier.roleId)) await member.roles.remove(role);
           }
-          removeVerified(guildId, userId);
-          console.log("Removed roles from " + userId + " in " + guildId + " — NFT gone");
+          await removeVerified(guildId, userId);
+          console.log("Removed roles from " + userId + " — NFT gone");
         } else {
           for (const tier of config.tiers) {
             const role = guild.roles.cache.get(tier.roleId);

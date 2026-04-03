@@ -20,15 +20,12 @@ async function getNFTBalance(walletAddress, contractAddress) {
 }
 
 async function pollPayments(client) {
-  const pending = getAllPending();
+  const pending = await getAllPending();
   if (Object.keys(pending).length === 0) return;
 
   const token = process.env.PAYMENT_TOKEN;
   const vault = process.env.VAULT_ADDRESS;
-  if (!token || !vault) {
-    console.error("PAYMENT_TOKEN or VAULT_ADDRESS not set");
-    return;
-  }
+  if (!token || !vault) { console.error("PAYMENT_TOKEN or VAULT_ADDRESS not set"); return; }
 
   const provider     = new ethers.JsonRpcProvider(process.env.TEMPO_RPC);
   const currentBlock = await provider.getBlockNumber();
@@ -47,15 +44,15 @@ async function pollPayments(client) {
       const { from, value } = event.args;
       if (value < expected) continue;
 
-      const entry = getPendingByWallet(from);
+      const entry = await getPendingByWallet(from);
       if (!entry) continue;
 
-      const config = getServer(entry.guildId);
+      const config = await getServer(entry.guild_id || entry.guildId);
       if (!config) continue;
 
       console.log("Payment received from " + from);
-      await grantRole(client, entry.guildId, entry.userId, entry.nftWallet, config);
-      deletePending(from);
+      await grantRole(client, entry.guild_id || entry.guildId, entry.user_id || entry.userId, entry.nft_wallet || entry.nftWallet, config);
+      await deletePending(from);
     }
 
     lastBlock = currentBlock;
@@ -92,7 +89,7 @@ async function grantRole(client, guildId, userId, nftWallet, config) {
       }
     }
 
-    addVerified(guildId, userId, nftWallet);
+    await addVerified(guildId, userId, nftWallet);
 
     const roleName = guild.roles.cache.get(tier.roleId)?.name || "Verified";
 
