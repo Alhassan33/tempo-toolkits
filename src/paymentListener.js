@@ -11,10 +11,22 @@ const TIP20_ABI = [
 const NFT_ABI = ["function balanceOf(address owner) view returns (uint256)"];
 
 let lastBlock = null;
+let sharedProvider = null;
+
+function getProvider() {
+  if (!sharedProvider) {
+    sharedProvider = new ethers.JsonRpcProvider(process.env.TEMPO_RPC);
+  }
+  return sharedProvider;
+}
+let _provider = null;
+function getProvider() {
+  if (!_provider) _provider = new ethers.JsonRpcProvider(process.env.TEMPO_RPC);
+  return _provider;
+}
 
 async function getNFTBalance(walletAddress, contractAddress) {
-  const provider = new ethers.JsonRpcProvider(process.env.TEMPO_RPC);
-  const contract = new ethers.Contract(contractAddress, NFT_ABI, provider);
+  const contract = new ethers.Contract(contractAddress, NFT_ABI, getProvider());
   const balance  = await contract.balanceOf.staticCall(walletAddress);
   return Number(balance);
 }
@@ -24,7 +36,7 @@ async function pollPayments(client) {
   const vault = process.env.VAULT_ADDRESS;
   if (!token || !vault) { console.error("PAYMENT_TOKEN or VAULT_ADDRESS not set"); return; }
 
-  const provider     = new ethers.JsonRpcProvider(process.env.TEMPO_RPC);
+  const provider     = getProvider();
   const currentBlock = await provider.getBlockNumber();
   const fromBlock    = lastBlock ? lastBlock + 1 : currentBlock - 50;
 
