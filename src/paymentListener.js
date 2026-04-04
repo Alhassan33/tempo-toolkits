@@ -1,7 +1,7 @@
 const { ethers } = require("ethers");
 const { getAllPending, getPendingByWallet, deletePending, addVerified, getServer, getTierRole } = require("./store");
 
-const POLL_INTERVAL = 5 * 1000;
+const POLL_INTERVAL = 15 * 1000;
 
 const TIP20_ABI = [
   "event Transfer(address indexed from, address indexed to, uint256 value)",
@@ -38,7 +38,11 @@ async function pollPayments(client) {
 
   const provider     = getProvider();
   const currentBlock = await provider.getBlockNumber();
-  const fromBlock    = lastBlock ? lastBlock + 1 : currentBlock - 50;
+  const isAlchemy = (process.env.TEMPO_RPC || "").includes("alchemy");
+  const maxRange  = isAlchemy ? 9 : 100;
+  const fromBlock = lastBlock
+    ? Math.max(lastBlock + 1, currentBlock - maxRange)
+    : currentBlock - Math.min(50, maxRange);
 
   // Always update lastBlock so we never scan old blocks on restart
   lastBlock = currentBlock;
@@ -71,7 +75,11 @@ async function pollPayments(client) {
     }
 
   } catch (err) {
-    console.error("Poll error: " + err.message);
+    if (err?.error?.code === 429) {
+      console.log("Rate limited by RPC provider. Will retry next poll.");
+    } else {
+      console.error("Poll error: " + err.message);
+    }
   }
 }
 
