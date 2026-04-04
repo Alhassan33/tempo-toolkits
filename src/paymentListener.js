@@ -11,15 +11,8 @@ const TIP20_ABI = [
 const NFT_ABI = ["function balanceOf(address owner) view returns (uint256)"];
 
 let lastBlock = null;
-let sharedProvider = null;
-
-function getProvider() {
-  if (!sharedProvider) {
-    sharedProvider = new ethers.JsonRpcProvider(process.env.TEMPO_RPC);
-  }
-  return sharedProvider;
-}
 let _provider = null;
+
 function getProvider() {
   if (!_provider) _provider = new ethers.JsonRpcProvider(process.env.TEMPO_RPC);
   return _provider;
@@ -38,13 +31,12 @@ async function pollPayments(client) {
 
   const provider     = getProvider();
   const currentBlock = await provider.getBlockNumber();
-  const isAlchemy = (process.env.TEMPO_RPC || "").includes("alchemy");
-  const maxRange  = isAlchemy ? 9 : 100;
-  const fromBlock = lastBlock
+  const isAlchemy    = (process.env.TEMPO_RPC || "").includes("alchemy");
+  const maxRange     = isAlchemy ? 9 : 100;
+  const fromBlock    = lastBlock
     ? Math.max(lastBlock + 1, currentBlock - maxRange)
     : currentBlock - Math.min(50, maxRange);
 
-  // Always update lastBlock so we never scan old blocks on restart
   lastBlock = currentBlock;
 
   const pending = await getAllPending();

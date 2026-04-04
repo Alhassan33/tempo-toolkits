@@ -14,14 +14,8 @@ const commands = [
 
   new SlashCommandBuilder()
     .setName("salessetup")
-    .setDescription("Configure sale and listing alerts for this server")
+    .setDescription("Configure sale alerts for this server")
     .setDefaultMemberPermissions(0x8)
-    .addChannelOption(o =>
-      o.setName("listings")
-        .setDescription("Channel for new listing alerts")
-        .addChannelTypes(ChannelType.GuildText)
-        .setRequired(false)
-    )
     .addChannelOption(o =>
       o.setName("sales")
         .setDescription("Channel for sale alerts")

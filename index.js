@@ -11,7 +11,7 @@ const {
   addVerified, getAllServers, getVerifiedWallet,
   setSalesConfig,
 } = require("./src/store");
-const { startChecker } = require("./src/checker");
+const { startChecker }        = require("./src/checker");
 const { startPaymentListener } = require("./src/paymentListener");
 const { startSalesListener }   = require("./src/salesListener");
 
@@ -101,7 +101,6 @@ async function applyTierRoles(member, guild, tiers, balance) {
     const role = guild.roles.cache.get(t.roleId);
     if (!role) { errors.push("Role " + t.roleId + " not found"); continue; }
 
-    // Check bot role hierarchy
     if (botMember.roles.highest.position <= role.position) {
       errors.push("My role is below **" + role.name + "** — move Tempo Ops above it in server settings");
       continue;
@@ -173,26 +172,29 @@ client.on(Events.InteractionCreate, async (interaction) => {
     await interaction.channel.send({ embeds: [embed], components: [row] });
   }
 
-  // /recheck command
-  if (interaction.isChatInputCommand() && interaction.commandName === "recheck") {
-    const config = await getServer(interaction.guildId);
-    if (!config) return interaction.reply({ content: "Bot not configured.", flags: MessageFlags.Ephemeral });
+  // /salessetup
+  if (interaction.isChatInputCommand() && interaction.commandName === "salessetup") {
+    const salesChannel = interaction.options.getChannel("sales");
+    const nftContract  = interaction.options.getString("contract")?.trim() || null;
 
-    const wallet = await getVerifiedWallet(interaction.guildId, interaction.user.id);
-    if (!wallet) {
-      return interaction.reply({ content: "You are not verified. Click Verify on the panel first.", flags: MessageFlags.Ephemeral });
+    if (nftContract && !ethers.isAddress(nftContract)) {
+      return interaction.reply({ content: "Invalid contract address.", flags: MessageFlags.Ephemeral });
     }
 
-    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+    await setSalesConfig(
+      interaction.guildId,
+      null,
+      salesChannel?.id || null,
+      nftContract
+    );
 
-    try {
-      const balance = await getNFTBalance(wallet, config.contract);
-      await applyTierRoles(interaction.member, interaction.guild, config.tiers, balance);
-      return interaction.editReply("Roles updated.\nWallet: `" + wallet + "`\nNFTs held: " + balance);
-    } catch (err) {
-      console.error("[recheck]", err.message);
-      return interaction.editReply("Could not reach the chain. Try again in a moment.");
-    }
+    return interaction.reply({
+      content:
+        "Sales alerts configured.\n" +
+        "Sales channel: " + (salesChannel ? "<#" + salesChannel.id + ">" : "not set") + "\n" +
+        "Contract filter: " + (nftContract ? "`" + nftContract + "`" : "all collections"),
+      flags: MessageFlags.Ephemeral,
+    });
   }
 
   // ── Buttons ──────────────────────────────────────────────────────────────
@@ -246,11 +248,10 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
     // Panel buttons
     if (interaction.customId === "verify_button") {
-      const config = await getServer(interaction.guildId);
+      const config   = await getServer(interaction.guildId);
       const existing = await getVerifiedWallet(interaction.guildId, interaction.user.id);
 
       if (existing) {
-        // Already verified — show status instead
         await interaction.deferReply({ flags: MessageFlags.Ephemeral });
         try {
           const balance = await getNFTBalance(existing, config.contract);
@@ -311,9 +312,11 @@ client.on(Events.InteractionCreate, async (interaction) => {
       await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
       try {
-        const balance = await getNFTBalance(wallet, config.contract);
-        const roleErr = await applyTierRoles(interaction.member, interaction.guild, config.tiers, balance);
-        if (roleErr) return interaction.editReply(roleErr);
+        const balance    = await getNFTBalance(wallet, config.contract);
+        const roleErrors = await applyTierRoles(interaction.member, interaction.guild, config.tiers, balance);
+        if (roleErrors.length > 0) {
+          return interaction.editReply("Role update issues:\n" + roleErrors.join("\n"));
+        }
         return interaction.editReply("Roles updated.\nWallet: `" + wallet + "`\nNFTs held: " + balance);
       } catch (err) {
         console.error("[recheck_button]", err.message);
@@ -357,34 +360,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
   }
 
   // ── Modals ────────────────────────────────────────────────────────────────
-  // /salessetup
-  if (interaction.isChatInputCommand() && interaction.commandName === "salessetup") {
-    const listingChannel = interaction.options.getChannel("listings");
-    const salesChannel   = interaction.options.getChannel("sales");
-    const nftContract    = interaction.options.getString("contract")?.trim() || null;
-
-    if (nftContract && !ethers.isAddress(nftContract)) {
-      return interaction.reply({ content: "Invalid contract address.", flags: MessageFlags.Ephemeral });
-    }
-
-    await setSalesConfig(
-      interaction.guildId,
-      listingChannel?.id || null,
-      salesChannel?.id   || null,
-      nftContract
-    );
-
-    return interaction.reply({
-      content:
-        "Sales alerts configured.\n" +
-        "Listings: " + (listingChannel ? "<#" + listingChannel.id + ">" : "not set") + "\n" +
-        "Sales: "    + (salesChannel   ? "<#" + salesChannel.id   + ">" : "not set") + "\n" +
-        "Contract filter: " + (nftContract ? "`" + nftContract + "`" : "all collections"),
-      flags: MessageFlags.Ephemeral,
-    });
-  }
-
-    if (interaction.isModalSubmit()) {
+  if (interaction.isModalSubmit()) {
 
     if (interaction.customId === "modal_name") {
       const collection = interaction.fields.getTextInputValue("name_input").trim();
@@ -453,7 +429,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
         "You have 15 minutes. Role is assigned automatically once payment confirms.\n" +
         "Already a holder? Click **Update Roles** on the panel to upgrade your tier instantly.";
 
-      // DM so user can always come back to it
       await interaction.user.send(paymentMsg).catch(() => {});
 
       return interaction.editReply(
