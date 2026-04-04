@@ -11,33 +11,16 @@ const {
   addVerified, getAllServers, getVerifiedWallet,
 } = require("./src/store");
 const { startChecker } = require("./src/checker");
-
-// In-memory NFT balance cache — TTL 60 seconds
-const balanceCache = new Map();
-const CACHE_TTL = 60 * 1000;
-
-function getCached(key) {
-  const entry = balanceCache.get(key);
-  if (!entry) return null;
-  if (Date.now() > entry.expiresAt) { balanceCache.delete(key); return null; }
-  return entry.value;
-}
-
-function setCache(key, value) {
-  balanceCache.set(key, { value, expiresAt: Date.now() + CACHE_TTL });
-}
 const { startPaymentListener } = require("./src/paymentListener");
 
+// Shared provider — one connection reused for all RPC calls
+const provider = new ethers.JsonRpcProvider(process.env.TEMPO_RPC);
 
-// Simple in-memory cache for NFT balances — 60s TTL
+// Balance cache — 60s TTL to reduce RPC calls
 const balanceCache = new Map();
 const CACHE_TTL = 60 * 1000;
 
-// Shared provider — created once, reused for all RPC calls
-const provider = new ethers.JsonRpcProvider(process.env.TEMPO_RPC);
-
 const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers] });
-const provider = new ethers.JsonRpcProvider(process.env.TEMPO_RPC);
 const pendingTierThreshold = new Map();
 
 client.once(Events.ClientReady, async () => {
@@ -93,8 +76,8 @@ function buildSetupRow() {
 // ── NFT balance helper (cached 60s) ─────────────────────────────────────────
 async function getNFTBalance(wallet, contractAddress) {
   const key = wallet.toLowerCase() + ":" + contractAddress.toLowerCase();
-  const cached = getCached(key);
-  if (cached !== null) return cached;
+  const cached = balanceCache.get(key);
+  if (cached && Date.now() - cached.ts < CACHE_TTL) return cached.balance;
 
   const contract = new ethers.Contract(
     contractAddress,
@@ -102,7 +85,7 @@ async function getNFTBalance(wallet, contractAddress) {
     provider
   );
   const balance = Number(await contract.balanceOf.staticCall(wallet));
-  setCache(key, balance);
+  balanceCache.set(key, { balance, ts: Date.now() });
   return balance;
 }
 
