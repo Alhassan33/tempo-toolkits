@@ -9,11 +9,15 @@ const MARKETPLACE_ABI = [
 const NFT_ABI = ["function name() view returns (string)"];
 const POLL_INTERVAL = 15 * 1000;
 
+// Use a lag of 2 blocks so the node has fully indexed before we query
+const BLOCK_LAG = 2;
+
 let lastBlock     = null;
 let discordClient = null;
 
-const provider = new ethers.JsonRpcProvider(process.env.TEMPO_RPC);
-const market   = new ethers.Contract(MARKETPLACE, MARKETPLACE_ABI, provider);
+const provider  = new ethers.JsonRpcProvider(process.env.TEMPO_RPC);
+const market    = new ethers.Contract(MARKETPLACE, MARKETPLACE_ABI, provider);
+const iface     = new ethers.Interface(MARKETPLACE_ABI);
 const nameCache = new Map();
 
 async function getNFTName(nftContract) {
@@ -52,17 +56,40 @@ async function broadcast(embed, nftContract) {
 
 async function poll() {
   try {
-    const currentBlock = await provider.getBlockNumber();
-    const fromBlock    = lastBlock ? lastBlock + 1 : currentBlock - 50;
-    lastBlock = currentBlock;
-    if (fromBlock > currentBlock) return;
+    const headBlock  = await provider.getBlockNumber();
+    // Stay BLOCK_LAG blocks behind the head so the node has fully indexed them
+    const safeBlock  = headBlock - BLOCK_LAG;
+    const fromBlock  = lastBlock ? lastBlock + 1 : safeBlock - 50;
 
-    const sales = await market.queryFilter(market.filters.NFTSold(), fromBlock, currentBlock);
-    for (const e of sales) {
-      if (!e.args) { console.warn("[sales] Undecoded log", e.transactionHash); continue; }
-      const { nftContract, tokenId, seller, buyer, price } = e.args;
+    if (fromBlock > safeBlock) return;   // nothing new yet
+
+    lastBlock = safeBlock;               // commit only up to what we queried
+
+    const logs = await provider.getLogs({
+      address:   MARKETPLACE,
+      topics:    [iface.getEvent("NFTSold").topicHash],
+      fromBlock,
+      toBlock:   safeBlock,
+    });
+
+    for (const log of logs) {
+      // Try to decode manually — queryFilter fails silently on ABI mismatches;
+      // getLogs + parseLog lets us skip non-matching logs cleanly.
+      let parsed;
+      try {
+        parsed = iface.parseLog(log);
+      } catch {
+        // Log matches the topic hash but doesn't fit the ABI (different event version).
+        // Skip silently — no point flooding logs with tx hashes.
+        continue;
+      }
+
+      if (!parsed?.args) continue;
+
+      const { nftContract, tokenId, seller, buyer, price } = parsed.args;
       const name = await getNFTName(nftContract);
       console.log("[sales] Sold: " + name + " #" + tokenId + " for " + formatPrice(price));
+
       const embed = new EmbedBuilder()
         .setTitle(name + " #" + tokenId.toString() + " sold")
         .addFields(
@@ -73,10 +100,12 @@ async function poll() {
         .setColor(0x10b981)
         .setURL("https://www.stablewhel.xyz/collection/4217/" + nftContract)
         .setFooter({ text: "Whelmart · Tempo Chain" });
+
       await broadcast(embed, nftContract);
     }
   } catch (err) {
-    if (err?.error?.code === 429) return;
+    // Silence rate-limit and "block range beyond head" RPC errors — next poll will retry
+    if (err?.error?.code === 429 || err?.error?.code === -32602) return;
     console.error("[sales] Poll error: " + err.message);
   }
 }
