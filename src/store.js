@@ -125,7 +125,15 @@ async function getAllPending() {
   return result;
 }
 
+async function getVerifiedWallet(guildId, userId) {
+  const res = await pool.query(
+    "SELECT wallet FROM verified WHERE guild_id = $1 AND user_id = $2",
+    [guildId, userId]
+  );
+  return res.rows[0]?.wallet || null;
+}
+
 module.exports = {
   init, getServer, setServer, addVerified, removeVerified, getAllServers,
-  getTierRole, addPending, getPendingByWallet, deletePending, getAllPending,
+  getTierRole, addPending, getPendingByWallet, deletePending, getAllPending, getVerifiedWallet,
 };

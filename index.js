@@ -6,12 +6,14 @@ const {
   RoleSelectMenuBuilder, ChannelSelectMenuBuilder, ChannelType,
 } = require("discord.js");
 const { ethers } = require("ethers");
-const { init, getServer, setServer, addPending, getTierRole, addVerified, getAllServers } = require("./src/store");
+const {
+  init, getServer, setServer, addPending, getTierRole,
+  addVerified, getAllServers, getVerifiedWallet,
+} = require("./src/store");
 const { startChecker } = require("./src/checker");
 const { startPaymentListener } = require("./src/paymentListener");
 
 const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers] });
-
 const pendingTierThreshold = new Map();
 
 client.once(Events.ClientReady, async () => {
@@ -21,6 +23,7 @@ client.once(Events.ClientReady, async () => {
   startPaymentListener(client);
 });
 
+// ── Setup embed ──────────────────────────────────────────────────────────────
 function buildSetupEmbed(config) {
   const contract   = config?.contract   || "Not set";
   const collection = config?.collection || "Not set";
@@ -41,10 +44,10 @@ function buildSetupEmbed(config) {
       ? "Ready. Run /panel to post the verification panel."
       : "Configure the bot for this server.")
     .addFields(
-      { name: "Collection", value: collection, inline: true },
-      { name: "Announcement Channel", value: channel, inline: true },
-      { name: "NFT Contract", value: "`" + contract + "`", inline: false },
-      { name: "Tiers", value: tierList, inline: false },
+      { name: "Collection",            value: collection,              inline: true  },
+      { name: "Announcement Channel",  value: channel,                 inline: true  },
+      { name: "NFT Contract",          value: "`" + contract + "`",    inline: false },
+      { name: "Tiers",                 value: tierList,                inline: false },
     )
     .setColor(ready ? 0x57F287 : 0xFEE75C);
 }
@@ -63,8 +66,34 @@ function buildSetupRow() {
   ];
 }
 
+// ── NFT balance helper ───────────────────────────────────────────────────────
+async function getNFTBalance(wallet, contractAddress) {
+  const provider = new ethers.JsonRpcProvider(process.env.TEMPO_RPC);
+  const contract = new ethers.Contract(
+    contractAddress,
+    ["function balanceOf(address owner) view returns (uint256)"],
+    provider
+  );
+  return Number(await contract.balanceOf.staticCall(wallet));
+}
+
+// ── Assign all qualifying tier roles ────────────────────────────────────────
+async function applyTierRoles(member, guild, tiers, balance) {
+  for (const t of tiers) {
+    const role = guild.roles.cache.get(t.roleId);
+    if (!role) continue;
+    if (balance >= t.threshold) {
+      if (!member.roles.cache.has(t.roleId)) await member.roles.add(role);
+    } else {
+      if (member.roles.cache.has(t.roleId)) await member.roles.remove(role);
+    }
+  }
+}
+
+// ── Interactions ─────────────────────────────────────────────────────────────
 client.on(Events.InteractionCreate, async (interaction) => {
 
+  // /setup
   if (interaction.isChatInputCommand() && interaction.commandName === "setup") {
     const config = await getServer(interaction.guildId);
     return interaction.reply({
@@ -74,6 +103,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
     });
   }
 
+  // /panel
   if (interaction.isChatInputCommand() && interaction.commandName === "panel") {
     const config = await getServer(interaction.guildId);
     if (!config?.contract || !config?.tiers?.length || !config?.collection) {
@@ -105,23 +135,43 @@ client.on(Events.InteractionCreate, async (interaction) => {
     const row = new ActionRowBuilder().addComponents(
       new ButtonBuilder().setCustomId("verify_button").setLabel("Verify").setStyle(ButtonStyle.Primary),
       new ButtonBuilder().setCustomId("status_button").setLabel("My Status").setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId("recheck_button").setLabel("Update Roles").setStyle(ButtonStyle.Secondary),
     );
 
     await interaction.reply({ content: "Panel posted.", flags: MessageFlags.Ephemeral });
     await interaction.channel.send({ embeds: [embed], components: [row] });
   }
 
+  // /recheck command
+  if (interaction.isChatInputCommand() && interaction.commandName === "recheck") {
+    const config = await getServer(interaction.guildId);
+    if (!config) return interaction.reply({ content: "Bot not configured.", flags: MessageFlags.Ephemeral });
+
+    const wallet = await getVerifiedWallet(interaction.guildId, interaction.user.id);
+    if (!wallet) {
+      return interaction.reply({ content: "You are not verified. Click Verify on the panel first.", flags: MessageFlags.Ephemeral });
+    }
+
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+
+    try {
+      const balance = await getNFTBalance(wallet, config.contract);
+      await applyTierRoles(interaction.member, interaction.guild, config.tiers, balance);
+      return interaction.editReply("Roles updated.\nWallet: `" + wallet + "`\nNFTs held: " + balance);
+    } catch (err) {
+      console.error("[recheck]", err.message);
+      return interaction.editReply("Could not reach the chain. Try again in a moment.");
+    }
+  }
+
+  // ── Buttons ──────────────────────────────────────────────────────────────
   if (interaction.isButton()) {
 
+    // Setup buttons
     if (interaction.customId === "setup_name") {
       const modal = new ModalBuilder().setCustomId("modal_name").setTitle("Collection Name");
       modal.addComponents(new ActionRowBuilder().addComponents(
-        new TextInputBuilder()
-          .setCustomId("name_input")
-          .setLabel("NFT collection name")
-          .setPlaceholder("e.g. Tempo Punks")
-          .setStyle(TextInputStyle.Short)
-          .setRequired(true)
+        new TextInputBuilder().setCustomId("name_input").setLabel("NFT collection name").setPlaceholder("e.g. Tempo Punks").setStyle(TextInputStyle.Short).setRequired(true)
       ));
       return interaction.showModal(modal);
     }
@@ -129,12 +179,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
     if (interaction.customId === "setup_contract") {
       const modal = new ModalBuilder().setCustomId("modal_contract").setTitle("NFT Contract");
       modal.addComponents(new ActionRowBuilder().addComponents(
-        new TextInputBuilder()
-          .setCustomId("contract_input")
-          .setLabel("NFT contract address on Tempo")
-          .setPlaceholder("0x...")
-          .setStyle(TextInputStyle.Short)
-          .setRequired(true)
+        new TextInputBuilder().setCustomId("contract_input").setLabel("NFT contract address on Tempo").setPlaceholder("0x...").setStyle(TextInputStyle.Short).setRequired(true)
       ));
       return interaction.showModal(modal);
     }
@@ -142,18 +187,13 @@ client.on(Events.InteractionCreate, async (interaction) => {
     if (interaction.customId === "setup_addtier") {
       const modal = new ModalBuilder().setCustomId("modal_tier_threshold").setTitle("Add Tier");
       modal.addComponents(new ActionRowBuilder().addComponents(
-        new TextInputBuilder()
-          .setCustomId("tier_threshold")
-          .setLabel("Minimum NFTs required")
-          .setPlaceholder("e.g. 1 or 10 or 50")
-          .setStyle(TextInputStyle.Short)
-          .setRequired(true)
+        new TextInputBuilder().setCustomId("tier_threshold").setLabel("Minimum NFTs required").setPlaceholder("e.g. 1 or 10 or 50").setStyle(TextInputStyle.Short).setRequired(true)
       ));
       return interaction.showModal(modal);
     }
 
     if (interaction.customId === "setup_cleartiers") {
-      await await setServer(interaction.guildId, { tiers: [] });
+      await setServer(interaction.guildId, { tiers: [] });
       return interaction.update({
         embeds: [buildSetupEmbed(await getServer(interaction.guildId))],
         components: buildSetupRow(),
@@ -165,9 +205,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
         .setCustomId("announcement_channel_select")
         .setPlaceholder("Pick the channel for verification announcements")
         .addChannelTypes(ChannelType.GuildText)
-        .setMinValues(1)
-        .setMaxValues(1);
-
+        .setMinValues(1).setMaxValues(1);
       return interaction.reply({
         content: "Pick the channel where verification announcements will be posted:",
         components: [new ActionRowBuilder().addComponents(channelSelect)],
@@ -175,60 +213,63 @@ client.on(Events.InteractionCreate, async (interaction) => {
       });
     }
 
+    // Panel buttons
     if (interaction.customId === "verify_button") {
       const modal = new ModalBuilder().setCustomId("verify_modal").setTitle("Verify Wallet");
       modal.addComponents(new ActionRowBuilder().addComponents(
-        new TextInputBuilder()
-          .setCustomId("wallet_input")
-          .setLabel("Your Tempo wallet address")
-          .setPlaceholder("0x...")
-          .setStyle(TextInputStyle.Short)
-          .setRequired(true)
+        new TextInputBuilder().setCustomId("wallet_input").setLabel("Your Tempo wallet address").setPlaceholder("0x...").setStyle(TextInputStyle.Short).setRequired(true)
       ));
       return interaction.showModal(modal);
     }
 
     if (interaction.customId === "status_button") {
       const config = await getServer(interaction.guildId);
-      if (!config) {
-        return interaction.reply({ content: "Bot not configured for this server.", flags: MessageFlags.Ephemeral });
-      }
+      if (!config) return interaction.reply({ content: "Bot not configured.", flags: MessageFlags.Ephemeral });
 
-      const userId = interaction.user.id;
-      const wallet = config.verified?.[userId];
-
+      const wallet = await getVerifiedWallet(interaction.guildId, interaction.user.id);
       if (!wallet) {
-        return interaction.reply({
-          content: "You are not verified. Click Verify to get started.",
-          flags: MessageFlags.Ephemeral,
-        });
+        return interaction.reply({ content: "You are not verified. Click Verify to get started.", flags: MessageFlags.Ephemeral });
       }
 
       await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
       try {
-        const provider = new ethers.JsonRpcProvider(process.env.TEMPO_RPC);
-        const contract = new ethers.Contract(
-          config.contract,
-          ["function balanceOf(address owner) view returns (uint256)"],
-          provider
-        );
-        const balance = Number(await contract.balanceOf.staticCall(wallet));
+        const balance = await getNFTBalance(wallet, config.contract);
         const tier    = getTierRole(config.tiers, balance);
-        const role    = tier ? interaction.guild.roles.cache.get(tier.roleId) : null;
-
         return interaction.editReply(
           "Wallet: `" + wallet + "`\n" +
           "NFTs held: " + balance + "\n" +
-          "Current tier: " + (role ? "<@&" + tier.roleId + ">" : "None") + "\n" +
+          "Current tier: " + (tier ? "<@&" + tier.roleId + ">" : "None") + "\n" +
           "Wallet is monitored. Roles update automatically."
         );
       } catch (err) {
         return interaction.editReply("Could not reach the chain. Try again in a moment.");
       }
     }
+
+    if (interaction.customId === "recheck_button") {
+      const config = await getServer(interaction.guildId);
+      if (!config) return interaction.reply({ content: "Bot not configured.", flags: MessageFlags.Ephemeral });
+
+      const wallet = await getVerifiedWallet(interaction.guildId, interaction.user.id);
+      if (!wallet) {
+        return interaction.reply({ content: "You are not verified. Click Verify first.", flags: MessageFlags.Ephemeral });
+      }
+
+      await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+
+      try {
+        const balance = await getNFTBalance(wallet, config.contract);
+        await applyTierRoles(interaction.member, interaction.guild, config.tiers, balance);
+        return interaction.editReply("Roles updated.\nWallet: `" + wallet + "`\nNFTs held: " + balance);
+      } catch (err) {
+        console.error("[recheck_button]", err.message);
+        return interaction.editReply("Could not reach the chain. Try again in a moment.");
+      }
+    }
   }
 
+  // ── Select menus ─────────────────────────────────────────────────────────
   if (interaction.isChannelSelectMenu() && interaction.customId === "announcement_channel_select") {
     const channel = interaction.channels.first();
     await setServer(interaction.guildId, { announcementChannel: channel.id });
@@ -262,6 +303,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
     });
   }
 
+  // ── Modals ────────────────────────────────────────────────────────────────
   if (interaction.isModalSubmit()) {
 
     if (interaction.customId === "modal_name") {
@@ -298,8 +340,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const roleSelect = new RoleSelectMenuBuilder()
         .setCustomId("tier_role_select")
         .setPlaceholder("Pick the role for " + threshold + "+ NFTs")
-        .setMinValues(1)
-        .setMaxValues(1);
+        .setMinValues(1).setMaxValues(1);
 
       return interaction.reply({
         content: "Now pick the role to assign for " + threshold + "+ NFTs:",
@@ -324,10 +365,22 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const fee = process.env.VERIFICATION_FEE || "0.02";
       await addPending(interaction.user.id, nftWallet, interaction.guildId);
 
+      const paymentMsg =
+        "**Payment details**\n" +
+        "Amount: **" + fee + " pathUSD**\n\n" +
+        "Send to:\n`" + process.env.VAULT_ADDRESS + "`\n\n" +
+        "Send **from** this wallet:\n`" + nftWallet + "`\n\n" +
+        "You have 15 minutes. Role is assigned automatically once payment confirms.\n" +
+        "Already a holder? Click **Update Roles** on the panel to upgrade your tier instantly.";
+
+      // DM so user can always come back to it
+      await interaction.user.send(paymentMsg).catch(() => {});
+
       return interaction.editReply(
-        "Send " + fee + " pathUSD to:\n```" + process.env.VAULT_ADDRESS + "```" +
-        "Send from this wallet: `" + nftWallet + "`\n" +
-        "You have 15 minutes. Role assigned automatically once payment is confirmed."
+        "Payment details sent to your DMs.\n\n" +
+        "Send **" + fee + " pathUSD** to:\n`" + process.env.VAULT_ADDRESS + "`\n\n" +
+        "Send from: `" + nftWallet + "`\n" +
+        "You have 15 minutes."
       );
     }
   }
