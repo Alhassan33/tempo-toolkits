@@ -1,7 +1,7 @@
 const { ethers } = require("ethers");
 const { getAllPending, getPendingByWallet, deletePending, addVerified, getServer, getTierRole } = require("./store");
 
-const POLL_INTERVAL = 15 * 1000;
+const POLL_INTERVAL = 5 * 1000;
 
 const TIP20_ABI = [
   "event Transfer(address indexed from, address indexed to, uint256 value)",
@@ -20,9 +20,6 @@ async function getNFTBalance(walletAddress, contractAddress) {
 }
 
 async function pollPayments(client) {
-  const pending = await getAllPending();
-  if (Object.keys(pending).length === 0) return;
-
   const token = process.env.PAYMENT_TOKEN;
   const vault = process.env.VAULT_ADDRESS;
   if (!token || !vault) { console.error("PAYMENT_TOKEN or VAULT_ADDRESS not set"); return; }
@@ -30,6 +27,12 @@ async function pollPayments(client) {
   const provider     = new ethers.JsonRpcProvider(process.env.TEMPO_RPC);
   const currentBlock = await provider.getBlockNumber();
   const fromBlock    = lastBlock ? lastBlock + 1 : currentBlock - 50;
+
+  // Always update lastBlock so we never scan old blocks on restart
+  lastBlock = currentBlock;
+
+  const pending = await getAllPending();
+  if (Object.keys(pending).length === 0) return;
 
   try {
     const contract = new ethers.Contract(token, TIP20_ABI, provider);
@@ -55,7 +58,6 @@ async function pollPayments(client) {
       await deletePending(from);
     }
 
-    lastBlock = currentBlock;
   } catch (err) {
     console.error("Poll error: " + err.message);
   }
