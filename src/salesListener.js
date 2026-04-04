@@ -4,13 +4,12 @@ const { getAllSalesConfigs } = require("./store");
 
 const MARKETPLACE = "0x2a0A6fdA20EcBFaD07c62eCbF33e68B205A08776";
 const MARKETPLACE_ABI = [
-  "event NFTListed(address nftContract, uint256 tokenId, address seller, uint256 price)",
   "event NFTSold(address nftContract, uint256 tokenId, address seller, address buyer, uint256 price)",
 ];
 const NFT_ABI = ["function name() view returns (string)"];
 const POLL_INTERVAL = 15 * 1000;
 
-let lastBlock   = null;
+let lastBlock     = null;
 let discordClient = null;
 
 const provider = new ethers.JsonRpcProvider(process.env.TEMPO_RPC);
@@ -37,12 +36,11 @@ function shortAddr(addr) {
   return addr.slice(0, 6) + "..." + addr.slice(-4);
 }
 
-async function broadcast(embed, channelKey, nftContract) {
+async function broadcast(embed, nftContract) {
   const configs = await getAllSalesConfigs();
   for (const config of configs) {
-    // If server has a contract filter, only alert for that contract
     if (config.nft_contract && config.nft_contract.toLowerCase() !== nftContract.toLowerCase()) continue;
-    const channelId = config[channelKey];
+    const channelId = config.sales_channel_id;
     if (!channelId) continue;
     const guild   = discordClient.guilds.cache.get(config.guild_id);
     if (!guild) continue;
@@ -59,27 +57,9 @@ async function poll() {
     lastBlock = currentBlock;
     if (fromBlock > currentBlock) return;
 
-    // Listings
-    const listings = await market.queryFilter(market.filters.NFTListed(), fromBlock, currentBlock);
-    for (const e of listings) {
-      const { nftContract, tokenId, seller, price } = e.args;
-      const name = await getNFTName(nftContract);
-      console.log("[sales] Listed: " + name + " #" + tokenId);
-      const embed = new EmbedBuilder()
-        .setTitle(name + " #" + tokenId.toString() + " listed")
-        .addFields(
-          { name: "Price",  value: formatPrice(price), inline: true },
-          { name: "Seller", value: shortAddr(seller),  inline: true },
-        )
-        .setColor(0x0ea5e9)
-        .setURL("https://www.stablewhel.xyz/collection/4217/" + nftContract)
-        .setFooter({ text: "Whelmart · Tempo Chain" });
-      await broadcast(embed, "listing_channel_id", nftContract);
-    }
-
-    // Sales
     const sales = await market.queryFilter(market.filters.NFTSold(), fromBlock, currentBlock);
     for (const e of sales) {
+      if (!e.args) { console.warn("[sales] Undecoded log", e.transactionHash); continue; }
       const { nftContract, tokenId, seller, buyer, price } = e.args;
       const name = await getNFTName(nftContract);
       console.log("[sales] Sold: " + name + " #" + tokenId + " for " + formatPrice(price));
@@ -93,7 +73,7 @@ async function poll() {
         .setColor(0x10b981)
         .setURL("https://www.stablewhel.xyz/collection/4217/" + nftContract)
         .setFooter({ text: "Whelmart · Tempo Chain" });
-      await broadcast(embed, "sales_channel_id", nftContract);
+      await broadcast(embed, nftContract);
     }
   } catch (err) {
     if (err?.error?.code === 429) return;
