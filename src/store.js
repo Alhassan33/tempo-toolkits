@@ -15,14 +15,25 @@ async function init() {
       guild_id TEXT,
       user_id TEXT,
       wallet TEXT,
+      balance INTEGER DEFAULT 0,
+      updated_at TIMESTAMPTZ DEFAULT NOW(),
       PRIMARY KEY (guild_id, user_id)
     );
+    ALTER TABLE verified ADD COLUMN IF NOT EXISTS balance INTEGER DEFAULT 0;
+    ALTER TABLE verified ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
     CREATE TABLE IF NOT EXISTS pending (
       nft_wallet TEXT PRIMARY KEY,
       user_id TEXT,
       guild_id TEXT,
       expires_at BIGINT
     );
+    CREATE TABLE IF NOT EXISTS sales_configs (
+      guild_id           TEXT PRIMARY KEY,
+      listing_channel_id TEXT,
+      sales_channel_id   TEXT,
+      nft_contract       TEXT
+    );
+    ALTER TABLE sales_configs ADD COLUMN IF NOT EXISTS nft_contract TEXT;
   `);
   console.log("Database ready");
 }
@@ -42,28 +53,46 @@ async function getServer(guildId) {
 
 async function setServer(guildId, updates) {
   const current = await getServer(guildId) || {};
-  const contract             = updates.contract             ?? current.contract             ?? null;
-  const collection           = updates.collection           ?? current.collection           ?? null;
-  const announcementChannel  = updates.announcementChannel  ?? current.announcementChannel  ?? null;
-  const tiers                = updates.tiers                ?? current.tiers                ?? [];
+  const contract            = updates.contract            ?? current.contract            ?? null;
+  const collection          = updates.collection          ?? current.collection          ?? null;
+  const announcementChannel = updates.announcementChannel ?? current.announcementChannel ?? null;
+  const tiers               = updates.tiers               ?? current.tiers               ?? [];
 
   await pool.query(`
     INSERT INTO servers (guild_id, contract, collection, announcement_channel, tiers)
     VALUES ($1,$2,$3,$4,$5)
     ON CONFLICT (guild_id) DO UPDATE SET
-      contract = EXCLUDED.contract,
-      collection = EXCLUDED.collection,
+      contract             = EXCLUDED.contract,
+      collection           = EXCLUDED.collection,
       announcement_channel = EXCLUDED.announcement_channel,
-      tiers = EXCLUDED.tiers
+      tiers                = EXCLUDED.tiers
   `, [guildId, contract, collection, announcementChannel, JSON.stringify(tiers)]);
 }
 
-async function addVerified(guildId, userId, wallet) {
+async function addVerified(guildId, userId, wallet, balance) {
   await pool.query(`
-    INSERT INTO verified (guild_id, user_id, wallet)
-    VALUES ($1,$2,$3)
-    ON CONFLICT (guild_id, user_id) DO UPDATE SET wallet = EXCLUDED.wallet
-  `, [guildId, userId, wallet]);
+    INSERT INTO verified (guild_id, user_id, wallet, balance, updated_at)
+    VALUES ($1,$2,$3,$4,NOW())
+    ON CONFLICT (guild_id, user_id) DO UPDATE SET
+      wallet     = EXCLUDED.wallet,
+      balance    = EXCLUDED.balance,
+      updated_at = NOW()
+  `, [guildId, userId, wallet, balance || 0]);
+}
+
+async function getCachedBalance(guildId, userId) {
+  const res = await pool.query(
+    "SELECT balance FROM verified WHERE guild_id = $1 AND user_id = $2",
+    [guildId, userId]
+  );
+  return res.rows[0]?.balance ?? null;
+}
+
+async function updateCachedBalance(guildId, userId, balance) {
+  await pool.query(
+    "UPDATE verified SET balance = $1, updated_at = NOW() WHERE guild_id = $2 AND user_id = $3",
+    [balance, guildId, userId]
+  );
 }
 
 async function removeVerified(guildId, userId) {
@@ -73,14 +102,12 @@ async function removeVerified(guildId, userId) {
 async function getAllServers() {
   const servers = await pool.query("SELECT * FROM servers");
   const result  = {};
-
   for (const row of servers.rows) {
     const verifiedRows = await pool.query(
       "SELECT user_id, wallet FROM verified WHERE guild_id = $1", [row.guild_id]
     );
     const verified = {};
     for (const v of verifiedRows.rows) verified[v.user_id] = v.wallet;
-
     result[row.guild_id] = {
       contract: row.contract,
       collection: row.collection,
@@ -102,7 +129,10 @@ async function addPending(userId, nftWallet, guildId) {
   await pool.query(`
     INSERT INTO pending (nft_wallet, user_id, guild_id, expires_at)
     VALUES ($1,$2,$3,$4)
-    ON CONFLICT (nft_wallet) DO UPDATE SET user_id = EXCLUDED.user_id, guild_id = EXCLUDED.guild_id, expires_at = EXCLUDED.expires_at
+    ON CONFLICT (nft_wallet) DO UPDATE SET
+      user_id    = EXCLUDED.user_id,
+      guild_id   = EXCLUDED.guild_id,
+      expires_at = EXCLUDED.expires_at
   `, [nftWallet.toLowerCase(), userId, guildId, expiresAt]);
 }
 
@@ -133,7 +163,30 @@ async function getVerifiedWallet(guildId, userId) {
   return res.rows[0]?.wallet || null;
 }
 
+// ── Sales config ──────────────────────────────────────────────────────────────
+async function setSalesConfig(guildId, listingChannelId, salesChannelId, nftContract) {
+  await pool.query(`
+    INSERT INTO sales_configs (guild_id, listing_channel_id, sales_channel_id, nft_contract)
+    VALUES ($1,$2,$3,$4)
+    ON CONFLICT (guild_id) DO UPDATE SET
+      listing_channel_id = EXCLUDED.listing_channel_id,
+      sales_channel_id   = EXCLUDED.sales_channel_id,
+      nft_contract       = EXCLUDED.nft_contract
+  `, [guildId, listingChannelId, salesChannelId, nftContract || null]);
+}
+
+async function getAllSalesConfigs() {
+  const res = await pool.query("SELECT * FROM sales_configs");
+  return res.rows;
+}
+
 module.exports = {
-  init, getServer, setServer, addVerified, removeVerified, getAllServers,
-  getTierRole, addPending, getPendingByWallet, deletePending, getAllPending, getVerifiedWallet,
+  init,
+  getServer, setServer,
+  addVerified, removeVerified, getAllServers,
+  getCachedBalance, updateCachedBalance,
+  getTierRole,
+  addPending, getPendingByWallet, deletePending, getAllPending,
+  getVerifiedWallet,
+  setSalesConfig, getAllSalesConfigs,
 };

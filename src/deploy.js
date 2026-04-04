@@ -1,5 +1,5 @@
 require("dotenv").config();
-const { REST, Routes, SlashCommandBuilder } = require("discord.js");
+const { REST, Routes, SlashCommandBuilder, ChannelType } = require("discord.js");
 
 const commands = [
   new SlashCommandBuilder()
@@ -11,9 +11,31 @@ const commands = [
     .setName("panel")
     .setDescription("Post the verification panel in this channel")
     .setDefaultMemberPermissions(0x8),
+
+  new SlashCommandBuilder()
+    .setName("salessetup")
+    .setDescription("Configure sale and listing alerts for this server")
+    .setDefaultMemberPermissions(0x8)
+    .addChannelOption(o =>
+      o.setName("listings")
+        .setDescription("Channel for new listing alerts")
+        .addChannelTypes(ChannelType.GuildText)
+        .setRequired(false)
+    )
+    .addChannelOption(o =>
+      o.setName("sales")
+        .setDescription("Channel for sale alerts")
+        .addChannelTypes(ChannelType.GuildText)
+        .setRequired(false)
+    )
+    .addStringOption(o =>
+      o.setName("contract")
+        .setDescription("NFT contract address to monitor (leave blank for all collections)")
+        .setRequired(false)
+    ),
 ];
 
-const rest = new REST().setToken(process.env.DISCORD_TOKEN);
+const rest     = new REST().setToken(process.env.DISCORD_TOKEN);
 const useGuild = process.argv.includes("--guild");
 
 (async () => {

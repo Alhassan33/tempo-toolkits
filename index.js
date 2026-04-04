@@ -9,9 +9,11 @@ const { ethers } = require("ethers");
 const {
   init, getServer, setServer, addPending, getTierRole,
   addVerified, getAllServers, getVerifiedWallet,
+  setSalesConfig,
 } = require("./src/store");
 const { startChecker } = require("./src/checker");
 const { startPaymentListener } = require("./src/paymentListener");
+const { startSalesListener }   = require("./src/salesListener");
 
 // Shared provider — one connection reused for all RPC calls
 const provider = new ethers.JsonRpcProvider(process.env.TEMPO_RPC);
@@ -28,6 +30,7 @@ client.once(Events.ClientReady, async () => {
   console.log("Bot online as " + client.user.tag);
   startChecker(client);
   startPaymentListener(client);
+  startSalesListener(client);
 });
 
 // ── Setup embed ──────────────────────────────────────────────────────────────
@@ -354,7 +357,34 @@ client.on(Events.InteractionCreate, async (interaction) => {
   }
 
   // ── Modals ────────────────────────────────────────────────────────────────
-  if (interaction.isModalSubmit()) {
+  // /salessetup
+  if (interaction.isChatInputCommand() && interaction.commandName === "salessetup") {
+    const listingChannel = interaction.options.getChannel("listings");
+    const salesChannel   = interaction.options.getChannel("sales");
+    const nftContract    = interaction.options.getString("contract")?.trim() || null;
+
+    if (nftContract && !ethers.isAddress(nftContract)) {
+      return interaction.reply({ content: "Invalid contract address.", flags: MessageFlags.Ephemeral });
+    }
+
+    await setSalesConfig(
+      interaction.guildId,
+      listingChannel?.id || null,
+      salesChannel?.id   || null,
+      nftContract
+    );
+
+    return interaction.reply({
+      content:
+        "Sales alerts configured.\n" +
+        "Listings: " + (listingChannel ? "<#" + listingChannel.id + ">" : "not set") + "\n" +
+        "Sales: "    + (salesChannel   ? "<#" + salesChannel.id   + ">" : "not set") + "\n" +
+        "Contract filter: " + (nftContract ? "`" + nftContract + "`" : "all collections"),
+      flags: MessageFlags.Ephemeral,
+    });
+  }
+
+    if (interaction.isModalSubmit()) {
 
     if (interaction.customId === "modal_name") {
       const collection = interaction.fields.getTextInputValue("name_input").trim();
