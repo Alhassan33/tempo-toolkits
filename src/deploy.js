@@ -11,10 +11,6 @@ const commands = [
     .setName("panel")
     .setDescription("Post the verification panel in this channel")
     .setDefaultMemberPermissions(0x8),
-
-  new SlashCommandBuilder()
-    .setName("recheck")
-    .setDescription("Recheck your wallet and update your roles instantly"),
 ];
 
 const rest = new REST().setToken(process.env.DISCORD_TOKEN);

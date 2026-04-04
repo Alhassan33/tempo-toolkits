@@ -79,13 +79,22 @@ async function grantRole(client, guildId, userId, nftWallet, config) {
       return;
     }
 
+    const botMember = guild.members.me;
     for (const t of config.tiers) {
       const role = guild.roles.cache.get(t.roleId);
       if (!role) continue;
-      if (balance >= t.threshold) {
-        if (!member.roles.cache.has(t.roleId)) await member.roles.add(role);
-      } else {
-        if (member.roles.cache.has(t.roleId)) await member.roles.remove(role);
+      if (botMember.roles.highest.position <= role.position) {
+        console.error("Role hierarchy issue: move Tempo Ops above " + role.name);
+        continue;
+      }
+      try {
+        if (balance >= t.threshold) {
+          if (!member.roles.cache.has(t.roleId)) await member.roles.add(role);
+        } else {
+          if (member.roles.cache.has(t.roleId)) await member.roles.remove(role);
+        }
+      } catch (err) {
+        console.error("Could not update role " + role.name + ": " + err.message);
       }
     }
 

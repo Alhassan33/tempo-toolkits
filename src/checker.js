@@ -21,10 +21,13 @@ async function runCheck(client) {
 
         const correctTier = getTierRole(config.tiers, balance);
 
+        const botMember = guild.members.me;
+
         if (!correctTier) {
           for (const tier of config.tiers) {
             const role = guild.roles.cache.get(tier.roleId);
-            if (role && member.roles.cache.has(tier.roleId)) await member.roles.remove(role);
+            if (!role || botMember.roles.highest.position <= role.position) continue;
+            if (member.roles.cache.has(tier.roleId)) await member.roles.remove(role).catch(() => {});
           }
           await removeVerified(guildId, userId);
           console.log("Removed roles from " + userId + " — NFT gone");
@@ -32,10 +35,18 @@ async function runCheck(client) {
           for (const tier of config.tiers) {
             const role = guild.roles.cache.get(tier.roleId);
             if (!role) continue;
-            if (balance >= tier.threshold) {
-              if (!member.roles.cache.has(tier.roleId)) await member.roles.add(role);
-            } else {
-              if (member.roles.cache.has(tier.roleId)) await member.roles.remove(role);
+            if (botMember.roles.highest.position <= role.position) {
+              console.error("[checker] Role hierarchy issue: move bot above " + role.name + " in " + guildId);
+              continue;
+            }
+            try {
+              if (balance >= tier.threshold) {
+                if (!member.roles.cache.has(tier.roleId)) await member.roles.add(role);
+              } else {
+                if (member.roles.cache.has(tier.roleId)) await member.roles.remove(role);
+              }
+            } catch (err) {
+              console.error("[checker] Could not update role: " + err.message);
             }
           }
         }

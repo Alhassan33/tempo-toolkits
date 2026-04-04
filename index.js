@@ -79,15 +79,31 @@ async function getNFTBalance(wallet, contractAddress) {
 
 // ── Assign all qualifying tier roles ────────────────────────────────────────
 async function applyTierRoles(member, guild, tiers, balance) {
+  const botMember = guild.members.me;
+  const errors = [];
+
   for (const t of tiers) {
     const role = guild.roles.cache.get(t.roleId);
-    if (!role) continue;
-    if (balance >= t.threshold) {
-      if (!member.roles.cache.has(t.roleId)) await member.roles.add(role);
-    } else {
-      if (member.roles.cache.has(t.roleId)) await member.roles.remove(role);
+    if (!role) { errors.push("Role " + t.roleId + " not found"); continue; }
+
+    // Check bot role hierarchy
+    if (botMember.roles.highest.position <= role.position) {
+      errors.push("My role is below **" + role.name + "** — move Tempo Ops above it in server settings");
+      continue;
+    }
+
+    try {
+      if (balance >= t.threshold) {
+        if (!member.roles.cache.has(t.roleId)) await member.roles.add(role);
+      } else {
+        if (member.roles.cache.has(t.roleId)) await member.roles.remove(role);
+      }
+    } catch (err) {
+      errors.push("Could not update **" + role.name + "**: " + err.message);
     }
   }
+
+  return errors;
 }
 
 // ── Interactions ─────────────────────────────────────────────────────────────
@@ -260,7 +276,8 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
       try {
         const balance = await getNFTBalance(wallet, config.contract);
-        await applyTierRoles(interaction.member, interaction.guild, config.tiers, balance);
+        const roleErr = await applyTierRoles(interaction.member, interaction.guild, config.tiers, balance);
+        if (roleErr) return interaction.editReply(roleErr);
         return interaction.editReply("Roles updated.\nWallet: `" + wallet + "`\nNFTs held: " + balance);
       } catch (err) {
         console.error("[recheck_button]", err.message);
