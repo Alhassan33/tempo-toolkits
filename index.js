@@ -231,6 +231,27 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
     // Panel buttons
     if (interaction.customId === "verify_button") {
+      const config = await getServer(interaction.guildId);
+      const existing = await getVerifiedWallet(interaction.guildId, interaction.user.id);
+
+      if (existing) {
+        // Already verified — show status instead
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+        try {
+          const balance = await getNFTBalance(existing, config.contract);
+          const tier    = getTierRole(config.tiers, balance);
+          return interaction.editReply(
+            "You are already verified.\n" +
+            "Wallet: `" + existing + "`\n" +
+            "NFTs held: " + balance + "\n" +
+            "Current tier: " + (tier ? "<@&" + tier.roleId + ">" : "None") + "\n\n" +
+            "Use **Update Roles** if your tier has changed."
+          );
+        } catch (err) {
+          return interaction.editReply("You are already verified. Use **Update Roles** to refresh your tier.");
+        }
+      }
+
       const modal = new ModalBuilder().setCustomId("verify_modal").setTitle("Verify Wallet");
       modal.addComponents(new ActionRowBuilder().addComponents(
         new TextInputBuilder().setCustomId("wallet_input").setLabel("Your Tempo wallet address").setPlaceholder("0x...").setStyle(TextInputStyle.Short).setRequired(true)
@@ -406,6 +427,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
 client.login(process.env.DISCORD_TOKEN);
 
 process.on("unhandledRejection", (err) => {
-  if (err?.code === 10062) return;
+  if (err?.code === 10062) return; // Unknown interaction - stale
+  if (err?.code === 50006) return; // Empty message - ignore
   console.error("Unhandled error:", err);
 });
