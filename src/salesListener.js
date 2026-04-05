@@ -14,12 +14,16 @@ let lastBlock     = null;
 let discordClient = null;
 
 const provider  = new ethers.JsonRpcProvider(process.env.TEMPO_RPC);
-const market    = new ethers.Contract(MARKETPLACE, MARKETPLACE_ABI, provider);
 const iface     = new ethers.Interface(MARKETPLACE_ABI);
 const nameCache = new Map();
 
-const EXPECTED_TOPIC = iface.getEvent("NFTSold").topicHash;
-console.log("[sales] Watching for topic:", EXPECTED_TOPIC);
+const SALE_TOPIC = iface.getEvent("NFTSold").topicHash;
+
+// Normalize a stored contract address — guards against pasted addresses that
+// use the multiplication sign (×) instead of the letter x, or other stray chars.
+function normalizeAddress(addr) {
+  return "0x" + addr.replace(/^0./, "").replace(/[^0-9a-fA-F]/g, "");
+}
 
 async function getNFTName(nftContract) {
   if (nameCache.has(nftContract)) return nameCache.get(nftContract);
@@ -44,7 +48,10 @@ function shortAddr(addr) {
 async function broadcast(embed, nftContract) {
   const configs = await getAllSalesConfigs();
   for (const config of configs) {
-    if (config.nft_contract && config.nft_contract.toLowerCase() !== nftContract.toLowerCase()) continue;
+    if (config.nft_contract) {
+      const stored = normalizeAddress(config.nft_contract);
+      if (stored.toLowerCase() !== nftContract.toLowerCase()) continue;
+    }
     const channelId = config.sales_channel_id;
     if (!channelId) continue;
     const guild   = discordClient.guilds.cache.get(config.guild_id);
@@ -57,35 +64,25 @@ async function broadcast(embed, nftContract) {
 
 async function poll() {
   try {
-    const headBlock  = await provider.getBlockNumber();
-    const safeBlock  = headBlock - BLOCK_LAG;
-    const fromBlock  = lastBlock ? lastBlock + 1 : safeBlock - 50;
+    const headBlock = await provider.getBlockNumber();
+    const safeBlock = headBlock - BLOCK_LAG;
+    const fromBlock = lastBlock ? lastBlock + 1 : safeBlock - 50;
 
     if (fromBlock > safeBlock) return;
     lastBlock = safeBlock;
 
-    // Fetch ALL logs from the marketplace — no topic filter — so we can see
-    // exactly what the contract is emitting and find the real event signature.
     const logs = await provider.getLogs({
       address:   MARKETPLACE,
+      topics:    [SALE_TOPIC],
       fromBlock,
       toBlock:   safeBlock,
     });
 
     for (const log of logs) {
-      const actualTopic = log.topics[0];
-
-      if (actualTopic !== EXPECTED_TOPIC) {
-        // Log the real topic so we can update the ABI to match
-        console.log("[sales] Unknown topic from marketplace:", actualTopic);
-        continue;
-      }
-
       let parsed;
       try {
         parsed = iface.parseLog(log);
-      } catch (e) {
-        console.log("[sales] Topic matched but parse failed:", e.message);
+      } catch {
         continue;
       }
 

@@ -164,7 +164,16 @@ async function getVerifiedWallet(guildId, userId) {
 }
 
 // ── Sales config ──────────────────────────────────────────────────────────────
+
+// Normalize a contract address — strips stray chars like the multiplication
+// sign (×) that can appear when pasting from some UIs, giving a clean 0x address.
+function normalizeContractAddress(addr) {
+  if (!addr) return null;
+  return "0x" + addr.replace(/^0./, "").replace(/[^0-9a-fA-F]/g, "");
+}
+
 async function setSalesConfig(guildId, listingChannelId, salesChannelId, nftContract) {
+  const cleanContract = normalizeContractAddress(nftContract);
   await pool.query(`
     INSERT INTO sales_configs (guild_id, listing_channel_id, sales_channel_id, nft_contract)
     VALUES ($1,$2,$3,$4)
@@ -172,7 +181,7 @@ async function setSalesConfig(guildId, listingChannelId, salesChannelId, nftCont
       listing_channel_id = EXCLUDED.listing_channel_id,
       sales_channel_id   = EXCLUDED.sales_channel_id,
       nft_contract       = EXCLUDED.nft_contract
-  `, [guildId, listingChannelId, salesChannelId, nftContract || null]);
+  `, [guildId, listingChannelId, salesChannelId, cleanContract]);
 }
 
 async function getAllSalesConfigs() {
