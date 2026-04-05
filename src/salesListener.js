@@ -162,7 +162,7 @@ async function poll() {
 
       const embed = new EmbedBuilder()
         .setTitle(name + " #" + shortTokenId(tokenId) + " sold")
-        .setURL(EXPLORER + "/tx/" + txHash)
+        .setURL("https://www.stablewhel.xyz/collection/4217/" + nftContract + "/token/" + tokenId.toString())
         .addFields(
           { name: "Price",  value: formatPrice(price), inline: true },
           { name: "Seller", value: addrLink(seller),   inline: true },
