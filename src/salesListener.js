@@ -4,7 +4,7 @@ const { getAllSalesConfigs } = require("./store");
 
 const MARKETPLACE = "0x2a0A6fdA20EcBFaD07c62eCbF33e68B205A08776";
 const MARKETPLACE_ABI = [
-  "event NFTSold(address nftContract, uint256 tokenId, address seller, address buyer, uint256 price)",
+  "event NFTSold(address indexed nftContract, uint256 tokenId, address indexed seller, address indexed buyer, uint256 price)",
 ];
 const NFT_ABI = ["function name() view returns (string)"];
 const POLL_INTERVAL = 15 * 1000;
