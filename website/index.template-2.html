@@ -1,0 +1,734 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tempo Ops</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;700;800&family=Azeret+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #06060c;
+  --card: #0d0d18;
+  --border: rgba(255,255,255,0.08);
+  --text: #eef0f8;
+  --muted: #6b7280;
+  --dim: #2d3748;
+  --purple: #8b5cf6;
+  --cyan: #22d3ee;
+  --green: #34d399;
+}
+
+html, body { width: 100%; overflow-x: hidden; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Azeret Mono', monospace;
+  font-size: 14px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+a { color: inherit; text-decoration: none; }
+
+/* NAV */
+nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--border);
+  background: rgba(6,6,12,0.95);
+  position: sticky;
+  top: 0;
+  z-index: 99;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 700;
+  font-size: 1rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 16px;
+}
+.bar {
+  width: 4px;
+  border-radius: 2px;
+  background: linear-gradient(to top, var(--purple), var(--cyan));
+}
+.bar-1 { height: 100%; }
+.bar-2 { height: 70%; }
+.bar-3 { height: 45%; }
+
+.nav-links {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+.nav-link {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  transition: color 0.2s;
+}
+.nav-link:hover { color: var(--cyan); }
+
+/* HERO */
+.hero {
+  padding: 4rem 1.25rem 3rem;
+  text-align: center;
+}
+
+.hero-label {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 0.65rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+.hero-label::before,
+.hero-label::after {
+  content: '';
+  width: 24px;
+  height: 1px;
+  background: linear-gradient(90deg, var(--purple), var(--cyan));
+}
+
+h1 {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: clamp(2.5rem, 10vw, 4.5rem);
+  font-weight: 800;
+  line-height: 0.92;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  margin-bottom: 1rem;
+}
+h1 .grad {
+  background: linear-gradient(90deg, var(--purple), var(--cyan));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.tagline {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 0.85rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 2.5rem;
+}
+
+/* STATS */
+.stats {
+  display: flex;
+  justify-content: center;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  margin: 0 auto 3rem;
+  max-width: 400px;
+}
+.stat {
+  flex: 1;
+  padding: 0.75rem 1rem;
+  text-align: center;
+  border-right: 1px solid var(--border);
+}
+.stat:last-child { border-right: none; }
+.stat-val {
+  display: block;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 1.4rem;
+  font-weight: 700;
+  background: linear-gradient(90deg, var(--purple), var(--cyan));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  line-height: 1.1;
+  margin-bottom: 2px;
+}
+.stat-label {
+  font-size: 0.6rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--dim);
+}
+
+/* TOOLS */
+.tools {
+  padding: 0 1.25rem 5rem;
+}
+
+.tools-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+.tools-header-label {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 0.62rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--dim);
+  white-space: nowrap;
+}
+.tools-header-line {
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+/* CARD LIST — simple stack, no grid */
+.card-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1.4rem;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+.card:hover { background: #11111f; border-color: rgba(255,255,255,0.13); }
+
+.card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.card-icon {
+  width: 40px;
+  height: 40px;
+  background: #13131f;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.card-icon svg {
+  width: 18px;
+  height: 18px;
+  stroke: var(--muted);
+  fill: none;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.pill {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 0.2rem 0.55rem;
+  border-radius: 100px;
+}
+.pill-live {
+  background: rgba(52,211,153,0.1);
+  color: var(--green);
+  border: 1px solid rgba(52,211,153,0.2);
+}
+.pill-soon {
+  background: rgba(45,55,72,0.5);
+  color: var(--dim);
+  border: 1px solid var(--border);
+}
+
+.card-name {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text);
+  margin-bottom: 0.3rem;
+}
+.card-desc {
+  font-size: 0.76rem;
+  color: var(--muted);
+  line-height: 1.7;
+}
+
+.card-footer {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border);
+}
+.card-cta {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--cyan);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+/* MORE */
+.more-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 2rem 1.4rem;
+  text-align: center;
+}
+.more-bars {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 4px;
+  height: 18px;
+  margin-bottom: 0.75rem;
+}
+.more-bar {
+  width: 4px;
+  border-radius: 2px;
+  background: var(--dim);
+  animation: pulse 1.6s ease infinite;
+}
+.more-bar:nth-child(1) { height: 55%; animation-delay: 0s; }
+.more-bar:nth-child(2) { height: 100%; animation-delay: 0.2s; }
+.more-bar:nth-child(3) { height: 40%; animation-delay: 0.4s; }
+@keyframes pulse { 0%,100%{opacity:0.3} 50%{opacity:1} }
+.more-label {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 0.68rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--dim);
+}
+
+/* FOOTER */
+footer {
+  border-top: 1px solid var(--border);
+  padding: 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.68rem;
+  color: var(--dim);
+}
+footer a { color: var(--cyan); }
+
+/* MODAL */
+.overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(6,6,12,0.88);
+  backdrop-filter: blur(8px);
+  z-index: 200;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 0;
+}
+.overlay.open { display: flex; }
+
+.modal {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 20px 20px 0 0;
+  width: 100%;
+  max-width: 600px;
+  max-height: 88vh;
+  overflow-y: auto;
+  animation: slideUp 0.22s ease;
+}
+@keyframes slideUp { from{transform:translateY(100%)} to{transform:none} }
+
+.modal-bar {
+  width: 36px;
+  height: 4px;
+  background: var(--border);
+  border-radius: 2px;
+  margin: 0.75rem auto 0;
+}
+
+.modal-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 1.25rem 1.25rem 0;
+  gap: 1rem;
+}
+.modal-head-left { display: flex; align-items: center; gap: 0.85rem; }
+.modal-icon {
+  width: 44px;
+  height: 44px;
+  background: #13131f;
+  border: 1px solid rgba(139,92,246,0.2);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.modal-icon svg { width: 20px; height: 20px; stroke: var(--purple); fill: none; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+.modal-title {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text);
+}
+.modal-sub { font-size: 0.68rem; color: var(--dim); margin-top: 2px; }
+.modal-close {
+  background: #13131f;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  width: 30px; height: 30px;
+  border-radius: 7px;
+  cursor: pointer;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: inherit;
+  flex-shrink: 0;
+}
+
+.modal-body { padding: 1.25rem; }
+.modal-desc { font-size: 0.78rem; color: var(--muted); line-height: 1.85; margin-bottom: 1.25rem; }
+
+.msec {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 0.6rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--dim);
+  margin-bottom: 0.65rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.msec::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+.features { display: flex; flex-direction: column; gap: 6px; margin-bottom: 1.25rem; }
+.fi {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  padding: 0.65rem 0.9rem;
+  background: #0a0a14;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+}
+.fp {
+  width: 5px; height: 5px; min-width: 5px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--purple), var(--cyan));
+  margin-top: 5px;
+  flex-shrink: 0;
+}
+.ft { font-size: 0.75rem; color: var(--muted); line-height: 1.6; }
+.ft strong { color: var(--text); font-weight: 500; }
+
+.steps { display: flex; flex-direction: column; gap: 6px; margin-bottom: 1.25rem; }
+.si { display: flex; align-items: flex-start; gap: 9px; }
+.sn {
+  width: 20px; height: 20px; min-width: 20px;
+  background: rgba(139,92,246,0.1);
+  border: 1px solid rgba(139,92,246,0.2);
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.6rem; color: var(--purple); font-weight: 700;
+  font-family: 'Barlow Condensed', sans-serif;
+  margin-top: 2px; flex-shrink: 0;
+}
+.st { font-size: 0.75rem; color: var(--muted); line-height: 1.6; padding-top: 2px; }
+.st strong { color: var(--text); font-weight: 500; }
+
+.modal-foot { padding: 0 1.25rem 1.25rem; }
+.btn {
+  display: inline-block;
+  padding: 0.65rem 1.5rem;
+  border-radius: 8px;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  border: none;
+  cursor: pointer;
+  background: linear-gradient(90deg, var(--purple), var(--cyan));
+  color: #000;
+  transition: opacity 0.15s;
+}
+.btn:hover { opacity: 0.85; }
+
+.modal-soon { text-align: center; padding: 2rem 0 1rem; }
+.soon-icon {
+  width: 48px; height: 48px;
+  background: #0a0a14;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  margin: 0 auto 1rem;
+}
+.soon-icon svg { width: 20px; height: 20px; stroke: var(--dim); fill: none; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+.soon-text { font-size: 0.78rem; color: var(--dim); line-height: 1.8; max-width: 260px; margin: 0 auto; }
+
+@media(min-width: 640px) {
+  nav { padding: 1.25rem 2.5rem; }
+  .hero { padding: 5rem 2.5rem 3.5rem; }
+  .tools { padding: 0 2.5rem 6rem; }
+  footer { padding: 1.4rem 2.5rem; }
+  .modal { border-radius: 20px; max-height: 85vh; align-self: center; }
+  .overlay { align-items: center; padding: 1.5rem; }
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="logo">
+    <div class="bars">
+      <div class="bar bar-1"></div>
+      <div class="bar bar-2"></div>
+      <div class="bar bar-3"></div>
+    </div>
+    Tempo Ops
+  </div>
+  <div class="nav-links">
+    <a href="{{TWITTER_URL}}" target="_blank" class="nav-link">Twitter</a>
+    <a href="{{DISCORD_URL}}" target="_blank" class="nav-link">Discord</a>
+  </div>
+</nav>
+
+<div class="hero">
+  <div class="hero-label">Built on Tempo Chain</div>
+  <h1>Tools for the<br><span class="grad">Tempo ecosystem</span></h1>
+  <p class="tagline">A tool for one &middot; A tool for all</p>
+  <div class="stats">
+    <div class="stat"><span class="stat-val">2</span><span class="stat-label">Live tools</span></div>
+    <div class="stat"><span class="stat-val">4+</span><span class="stat-label">In dev</span></div>
+    <div class="stat"><span class="stat-val">0</span><span class="stat-label">Downtime</span></div>
+  </div>
+</div>
+
+<div class="tools">
+  <div class="tools-header">
+    <span class="tools-header-label">All tools</span>
+    <div class="tools-header-line"></div>
+    <span class="tools-header-label">4 tools &middot; 2 live</span>
+  </div>
+
+  <div class="card-list">
+
+    <div class="card" onclick="openModal('verify')">
+      <div class="card-top">
+        <div class="card-icon"><svg viewBox="0 0 24 24"><path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg></div>
+        <div class="pill pill-live">Live</div>
+      </div>
+      <div>
+        <div class="card-name">NFT Verification Bot</div>
+        <div class="card-desc">Gate Discord servers with on-chain NFT ownership. Tiered roles, auto-updates, pathUSD payments.</div>
+      </div>
+      <div class="card-footer"><div class="card-cta">Open →</div></div>
+    </div>
+
+    <div class="card" onclick="openModal('sales')">
+      <div class="card-top">
+        <div class="card-icon"><svg viewBox="0 0 24 24"><path d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg></div>
+        <div class="pill pill-live">Live</div>
+      </div>
+      <div>
+        <div class="card-name">Sales Bot</div>
+        <div class="card-desc">Real-time NFT sale and listing alerts in Discord. Watches Whelmart for any activity on your collection.</div>
+      </div>
+      <div class="card-footer"><div class="card-cta">Open →</div></div>
+    </div>
+
+    <div class="card" onclick="openModal('airdrop')">
+      <div class="card-top">
+        <div class="card-icon"><svg viewBox="0 0 24 24"><path d="M12 19V5m0 14l-4-4m4 4l4-4M3 15a9 9 0 1118 0"/></svg></div>
+        <div class="pill pill-soon">Soon</div>
+      </div>
+      <div>
+        <div class="card-name">Airdrop Tool</div>
+        <div class="card-desc">Snapshot holders and distribute tokens or NFTs to wallets. Filter by tier, threshold, or date range.</div>
+      </div>
+      <div class="card-footer"><div class="card-cta">Open →</div></div>
+    </div>
+
+    <div class="card" onclick="openModal('snapshot')">
+      <div class="card-top">
+        <div class="card-icon"><svg viewBox="0 0 24 24"><path d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><circle cx="12" cy="13" r="3"/></svg></div>
+        <div class="pill pill-soon">Soon</div>
+      </div>
+      <div>
+        <div class="card-name">Snapshot Tool</div>
+        <div class="card-desc">Take holder snapshots at any block height. Export to CSV for allowlists, governance, and distribution.</div>
+      </div>
+      <div class="card-footer"><div class="card-cta">Open →</div></div>
+    </div>
+
+    <div class="more-card">
+      <div class="more-bars">
+        <div class="more-bar"></div>
+        <div class="more-bar"></div>
+        <div class="more-bar"></div>
+      </div>
+      <div class="more-label">More tools in development</div>
+    </div>
+
+  </div>
+</div>
+
+<footer>
+  <span>© 2026 Tempo Ops</span>
+  <span>Built for <a href="https://tempo.xyz" target="_blank">Tempo Chain</a></span>
+</footer>
+
+<!-- Modal: Verify -->
+<div class="overlay" id="modal-verify" onclick="closeOnOverlay(event,'verify')">
+  <div class="modal">
+    <div class="modal-bar"></div>
+    <div class="modal-head">
+      <div class="modal-head-left">
+        <div class="modal-icon"><svg viewBox="0 0 24 24"><path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg></div>
+        <div><div class="modal-title">NFT Verification Bot</div><div class="modal-sub">Discord · Live</div></div>
+      </div>
+      <button class="modal-close" onclick="closeModal('verify')">✕</button>
+    </div>
+    <div class="modal-body">
+      <p class="modal-desc">Gate your Discord server with real on-chain NFT ownership. Users verify by sending a small pathUSD payment. The bot checks the contract, assigns tiered roles, and monitors wallets hourly to update roles as NFTs move.</p>
+      <div class="msec">Features</div>
+      <div class="features">
+        <div class="fi"><div class="fp"></div><div class="ft"><strong>On-chain verification</strong> / checks ownership directly on Tempo, no middlemen</div></div>
+        <div class="fi"><div class="fp"></div><div class="ft"><strong>Custom tiers</strong> / any threshold, any role name. You define the structure</div></div>
+        <div class="fi"><div class="fp"></div><div class="ft"><strong>Auto role updates</strong> / hourly sweep upgrades or removes roles as NFTs move</div></div>
+        <div class="fi"><div class="fp"></div><div class="ft"><strong>Multi-server</strong> / each server configures their own contract and roles</div></div>
+        <div class="fi"><div class="fp"></div><div class="ft"><strong>pathUSD payment</strong> / small stablecoin fee proves wallet ownership</div></div>
+      </div>
+      <div class="msec">Setup</div>
+      <div class="steps">
+        <div class="si"><div class="sn">1</div><div class="st"><strong>Apply for access</strong> using the button below</div></div>
+        <div class="si"><div class="sn">2</div><div class="st"><strong>Run /setup</strong> — set your NFT contract and add tiers</div></div>
+        <div class="si"><div class="sn">3</div><div class="st"><strong>Run /panel</strong> — post the verification embed in any channel</div></div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <a href="https://docs.google.com/forms/d/16xV_1Hjnjo9EpyrxNtM8UHVNg5V_nzVmrtc6Jnx5L_U/viewform" target="_blank" class="btn">Apply for access</a>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Sales -->
+<div class="overlay" id="modal-sales" onclick="closeOnOverlay(event,'sales')">
+  <div class="modal">
+    <div class="modal-bar"></div>
+    <div class="modal-head">
+      <div class="modal-head-left">
+        <div class="modal-icon"><svg viewBox="0 0 24 24"><path d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg></div>
+        <div><div class="modal-title">Sales Bot</div><div class="modal-sub">Discord · Live</div></div>
+      </div>
+      <button class="modal-close" onclick="closeModal('sales')">✕</button>
+    </div>
+    <div class="modal-body">
+      <p class="modal-desc">Real-time sale and listing alerts for your NFT collection. Watches Whelmart on Tempo Chain and posts to any Discord channel the moment activity happens.</p>
+      <div class="msec">Features</div>
+      <div class="features">
+        <div class="fi"><div class="fp"></div><div class="ft"><strong>Instant alerts</strong> / sale and listing embeds posted the moment they happen</div></div>
+        <div class="fi"><div class="fp"></div><div class="ft"><strong>Collection filter</strong> / configure it to watch only your collection</div></div>
+        <div class="fi"><div class="fp"></div><div class="ft"><strong>Separate channels</strong> / route listings and sales to different channels</div></div>
+        <div class="fi"><div class="fp"></div><div class="ft"><strong>Multi-server</strong> / each server configures independently</div></div>
+      </div>
+      <div class="msec">Setup</div>
+      <div class="steps">
+        <div class="si"><div class="sn">1</div><div class="st"><strong>Apply for access</strong> using the button below</div></div>
+        <div class="si"><div class="sn">2</div><div class="st"><strong>Run /salessetup</strong> — pick your channels and paste your NFT contract</div></div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <a href="https://docs.google.com/forms/d/16xV_1Hjnjo9EpyrxNtM8UHVNg5V_nzVmrtc6Jnx5L_U/viewform" target="_blank" class="btn">Apply for access</a>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Airdrop -->
+<div class="overlay" id="modal-airdrop" onclick="closeOnOverlay(event,'airdrop')">
+  <div class="modal">
+    <div class="modal-bar"></div>
+    <div class="modal-head">
+      <div class="modal-head-left">
+        <div class="modal-icon"><svg viewBox="0 0 24 24"><path d="M12 19V5m0 14l-4-4m4 4l4-4M3 15a9 9 0 1118 0"/></svg></div>
+        <div><div class="modal-title">Airdrop Tool</div><div class="modal-sub">Web · Coming soon</div></div>
+      </div>
+      <button class="modal-close" onclick="closeModal('airdrop')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-soon">
+        <div class="soon-icon"><svg viewBox="0 0 24 24"><path d="M12 19V5m0 14l-4-4m4 4l4-4M3 15a9 9 0 1118 0"/></svg></div>
+        <p class="soon-text">Snapshot holders and distribute tokens or NFTs. Filter by tier, threshold, or date. Coming soon.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Snapshot -->
+<div class="overlay" id="modal-snapshot" onclick="closeOnOverlay(event,'snapshot')">
+  <div class="modal">
+    <div class="modal-bar"></div>
+    <div class="modal-head">
+      <div class="modal-head-left">
+        <div class="modal-icon"><svg viewBox="0 0 24 24"><path d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><circle cx="12" cy="13" r="3"/></svg></div>
+        <div><div class="modal-title">Snapshot Tool</div><div class="modal-sub">Web · Coming soon</div></div>
+      </div>
+      <button class="modal-close" onclick="closeModal('snapshot')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-soon">
+        <div class="soon-icon"><svg viewBox="0 0 24 24"><path d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><circle cx="12" cy="13" r="3"/></svg></div>
+        <p class="soon-text">Take holder snapshots at any block height. Export to CSV for allowlists, governance, and token distribution. Coming soon.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function openModal(id){ document.getElementById('modal-'+id).classList.add('open'); document.body.style.overflow='hidden'; }
+function closeModal(id){ document.getElementById('modal-'+id).classList.remove('open'); document.body.style.overflow=''; }
+function closeOnOverlay(e,id){ if(e.target===e.currentTarget) closeModal(id); }
+document.addEventListener('keydown', e => {
+  if(e.key==='Escape') document.querySelectorAll('.overlay.open').forEach(m=>{ m.classList.remove('open'); document.body.style.overflow=''; });
+});
+</script>
+</body>
+</html>
